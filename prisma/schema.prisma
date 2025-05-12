@@ -1,0 +1,61 @@
+// schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url = env("POSTGRES_PRISMA_URL") // uses connection pooling
+  directUrl = env("POSTGRES_URL_NON_POOLING") // uses a direct connection
+}
+
+model Customer {
+  id            String       @default(cuid()) @id
+  name          String
+  email         String?      @unique
+  phone         String?
+  address       String?
+  orders        Order[]      // Relation to orders placed by the customer
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+}
+
+model Order {
+  id            String       @default(cuid()) @id
+  customer      Customer     @relation(fields: [customerId], references: [id])
+  customerId    String
+  customerName  String
+  contactNumber String?
+  email         String?
+  items         OrderItem[]  // Relation to OrderItem for product list
+  totalCost     Float        @default(0.0)
+  notes         String?
+  status        String       @default("Pending") // e.g., Pending, Delivered, etc.
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+}
+
+model OrderItem {
+  id        String   @default(cuid()) @id
+  product   String   // Name of the product
+  quantity  Int
+  price     Float    // Price per unit
+  order     Order    @relation(fields: [orderId], references: [id])
+  orderId   String
+}
+
+model Product {
+  id            String   @default(cuid()) @id
+  name          String
+  category      String
+  sku           String   @unique
+  price         Float
+  costPrice     Float
+  quantity      Int
+  reorderLevel  Int
+  location      String
+  supplier      String
+  description   String?
+  lastUpdated   DateTime @default(now())
+}

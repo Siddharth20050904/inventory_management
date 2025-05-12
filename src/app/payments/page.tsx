@@ -8,12 +8,17 @@ import {
   Package, Search, CheckCircle, Calendar, 
   DollarSign, ChevronDown, X, Filter
 } from 'lucide-react';
+import Sidebar from '@/components/sidebar';
 
 export default function PendingPaymentsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isMarkPaidOpen, setIsMarkPaidOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const toggleSidebar = () => {
+    setIsSidebarOpen(!isSidebarOpen);
+  }
   const [selectedPayment, setSelectedPayment] = useState<{
     id: string;
     customer: string;
@@ -115,28 +120,12 @@ export default function PendingPaymentsPage() {
   return (
     <div className="flex h-screen bg-gray-100">
       {/* Side Navigation */}
-      <div className="w-64 bg-gray-900 text-white">
-        <div className="p-4 border-b border-gray-800">
-          <h1 className="text-xl font-bold">Inventory Pro</h1>
-        </div>
-        <nav className="mt-5">
-          <ul>
-            {navigationItems.map((item) => (
-              <li key={item.name}>
-                <a
-                  href={item.href}
-                  className={`flex items-center px-4 py-3 text-gray-300 hover:bg-gray-800 hover:text-white transition-colors ${
-                    item.name === "Pending Payments" ? "bg-gray-800 text-white" : ""
-                  }`}
-                >
-                  <span className="mr-3">{item.icon}</span>
-                  <span>{item.name}</span>
-                </a>
-              </li>
-            ))}
-          </ul>
-        </nav>
-      </div>
+      {/* Sidebar */}
+      <Sidebar
+        isSidebarOpen={isSidebarOpen}
+        toggleSidebar={toggleSidebar}
+        navigationItems={navigationItems}
+      />
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">

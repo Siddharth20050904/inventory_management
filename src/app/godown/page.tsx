@@ -3,13 +3,14 @@
 import { useState } from 'react';
 import { 
   LayoutDashboard, Users, FileText, ShoppingCart, 
-  Package, LogOut, Menu, X, Bell, Search, 
+  Package, Bell, Search, 
   Plus, Trash2, Save, Edit, RefreshCw,
   ChevronDown, ChevronUp, AlertTriangle
 } from 'lucide-react';
+import Sidebar from '@/components/sidebar';
 
 export default function GodownPage() {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isAddingProduct, setIsAddingProduct] = useState(false);
   const [isEditingProduct, setIsEditingProduct] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -168,40 +169,11 @@ export default function GodownPage() {
   return (
     <div className="flex h-screen bg-gray-100">
       {/* Sidebar */}
-      <div className={`${isSidebarOpen ? 'w-64' : 'w-20'} bg-gray-900 text-white transition-all duration-300 ease-in-out relative`}>
-        <div className="flex items-center justify-between p-4 border-b border-gray-800">
-          {isSidebarOpen && <h1 className="text-xl font-bold">Inventory Pro</h1>}
-          <button onClick={toggleSidebar} className="p-1 rounded-md hover:bg-gray-800">
-            {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
-          </button>
-        </div>
-        <nav className="mt-5">
-          <ul>
-            {navigationItems.map((item) => (
-              <li key={item.name}>
-                <a
-                  href={item.href}
-                  className={`flex items-center px-4 py-3 text-gray-300 hover:bg-gray-800 hover:text-white transition-colors ${
-                    item.name === 'Godown' ? 'bg-gray-800 text-white' : ''
-                  }`}
-                >
-                  <span className="mr-3">{item.icon}</span>
-                  {isSidebarOpen && <span>{item.name}</span>}
-                </a>
-              </li>
-            ))}
-          </ul>
-        </nav>
-        <div className="absolute bottom-0 w-full p-4">
-          <a
-            href="/logout"
-            className="flex items-center text-gray-300 hover:text-white transition-colors"
-          >
-            <LogOut size={20} className="mr-3" />
-            {isSidebarOpen && <span>Logout</span>}
-          </a>
-        </div>
-      </div>
+      <Sidebar
+        isSidebarOpen={isSidebarOpen}
+        toggleSidebar={toggleSidebar}
+        navigationItems={navigationItems}
+      />
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
@@ -247,7 +219,7 @@ export default function GodownPage() {
                 setIsEditingProduct(false);
                 setProductForm(initialProductForm);
               }}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center"
+              className="w-30 h-10 px-1 py-2 text-sm ml-5 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center"
             >
               <Plus size={18} className="mr-1" /> Add Product
             </button>

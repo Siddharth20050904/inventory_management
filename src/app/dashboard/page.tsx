@@ -3,12 +3,13 @@
 import { useState } from 'react';
 import { 
   LayoutDashboard, Users, FileText, ShoppingCart, 
-  Package, LogOut, Menu, X, Bell, 
+  Package, Bell, 
   TrendingUp, DollarSign, Box, AlertTriangle
 } from 'lucide-react';
+import Sidebar from '../../components/sidebar';
 
 export default function DashboardLayout() {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   
   // Sample data for dashboard stats
   const stats = [
@@ -42,40 +43,11 @@ export default function DashboardLayout() {
   return (
     <div className="flex h-screen bg-gray-100">
       {/* Sidebar */}
-      <div className={`${isSidebarOpen ? 'w-64' : 'w-20'} bg-gray-900 text-white transition-all duration-300 ease-in-out`}>
-        <div className="flex items-center justify-between p-4 border-b border-gray-800">
-          {isSidebarOpen && (
-            <h1 className="text-xl font-bold">Inventory Pro</h1>
-          )}
-          <button onClick={toggleSidebar} className="p-1 rounded-md hover:bg-gray-800">
-            {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
-          </button>
-        </div>
-        <nav className="mt-5">
-          <ul>
-            {navigationItems.map((item) => (
-              <li key={item.name}>
-                <a
-                  href={item.href}
-                  className="flex items-center px-4 py-3 text-gray-300 hover:bg-gray-800 hover:text-white transition-colors"
-                >
-                  <span className="mr-3">{item.icon}</span>
-                  {isSidebarOpen && <span>{item.name}</span>}
-                </a>
-              </li>
-            ))}
-          </ul>
-        </nav>
-        <div className="absolute bottom-0 w-full p-4">
-          <a
-            href="/logout"
-            className="flex items-center text-gray-300 hover:text-white transition-colors"
-          >
-            <LogOut size={20} className="mr-3" />
-            {isSidebarOpen && <span>Logout</span>}
-          </a>
-        </div>
-      </div>
+      <Sidebar
+        isSidebarOpen={isSidebarOpen}
+        toggleSidebar={toggleSidebar}
+        navigationItems={navigationItems}
+      />
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">

@@ -6,9 +6,11 @@ import {
   LayoutDashboard, Users, FileText, ShoppingCart, 
   Package, Search, Plus, Edit, Trash2, X
 } from 'lucide-react';
+import Sidebar from '../../components/sidebar';
 
 export default function CustomersPage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<{
     id: number;
@@ -110,29 +112,11 @@ export default function CustomersPage() {
 
   return (
     <div className="flex h-screen bg-gray-100">
-      {/* Side Navigation - Just showing the navigation items for reference */}
-      <div className="w-64 bg-gray-900 text-white">
-        <div className="p-4 border-b border-gray-800">
-          <h1 className="text-xl font-bold">Inventory Pro</h1>
-        </div>
-        <nav className="mt-5">
-          <ul>
-            {navigationItems.map((item) => (
-              <li key={item.name}>
-                <a
-                  href={item.href}
-                  className={`flex items-center px-4 py-3 text-gray-300 hover:bg-gray-800 hover:text-white transition-colors ${
-                    item.name === "Customers" ? "bg-gray-800 text-white" : ""
-                  }`}
-                >
-                  <span className="mr-3">{item.icon}</span>
-                  <span>{item.name}</span>
-                </a>
-              </li>
-            ))}
-          </ul>
-        </nav>
-      </div>
+      <Sidebar
+        isSidebarOpen={isSidebarOpen}
+        toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+        navigationItems={navigationItems}
+      />
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
@@ -159,7 +143,7 @@ export default function CustomersPage() {
             </div>
             <button 
               onClick={openAddModal}
-              className="flex items-center bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
+              className="flex items-center bg-blue-600 text-white w-30 h-10 px-1 py-2 text-sm ml-5 rounded-md hover:bg-blue-700 transition-colors"
             >
               <Plus size={18} className="mr-1" />
               Add Customer

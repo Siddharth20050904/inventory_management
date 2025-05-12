@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
-import React from 'react';
+import Sidebar from '../../components/sidebar';
 
 import { useState, useEffect } from 'react';
 import { 
@@ -8,9 +8,10 @@ import {
   Package, LogOut, Menu, X, Bell, Search, 
   Plus, Trash2, Save, ChevronDown
 } from 'lucide-react';
+import React from 'react';
 
 export default function OrdersPage() {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isAddingOrder, setIsAddingOrder] = useState(false);
   const [orderForm, setOrderForm] = useState({
     customerName: '',
@@ -205,42 +206,11 @@ export default function OrdersPage() {
   return (
     <div className="flex h-screen bg-gray-100">
       {/* Sidebar */}
-      <div className={`${isSidebarOpen ? 'w-64' : 'w-20'} bg-gray-900 text-white transition-all duration-300 ease-in-out`}>
-        <div className="flex items-center justify-between p-4 border-b border-gray-800">
-          {isSidebarOpen && (
-            <h1 className="text-xl font-bold">Inventory Pro</h1>
-          )}
-          <button onClick={toggleSidebar} className="p-1 rounded-md hover:bg-gray-800">
-            {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
-          </button>
-        </div>
-        <nav className="mt-5">
-          <ul>
-            {navigationItems.map((item) => (
-              <li key={item.name}>
-                <a
-                  href={item.href}
-                  className={`flex items-center px-4 py-3 text-gray-300 hover:bg-gray-800 hover:text-white transition-colors ${
-                    item.name === 'Orders' ? 'bg-gray-800 text-white' : ''
-                  }`}
-                >
-                  <span className="mr-3">{item.icon}</span>
-                  {isSidebarOpen && <span>{item.name}</span>}
-                </a>
-              </li>
-            ))}
-          </ul>
-        </nav>
-        <div className="absolute bottom-0 w-full p-4">
-          <a
-            href="/logout"
-            className="flex items-center text-gray-300 hover:text-white transition-colors"
-          >
-            <LogOut size={20} className="mr-3" />
-            {isSidebarOpen && <span>Logout</span>}
-          </a>
-        </div>
-      </div>
+      <Sidebar
+        isSidebarOpen={isSidebarOpen}
+        toggleSidebar={toggleSidebar}
+        navigationItems={navigationItems}
+      />
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
@@ -282,7 +252,7 @@ export default function OrdersPage() {
             </div>
             <button 
               onClick={() => setIsAddingOrder(true)}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center"
+              className="w-30 h-10 px-1 py-2 text-sm ml-5 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center"
             >
               <Plus size={18} className="mr-1" /> New Order
             </button>
@@ -438,8 +408,8 @@ export default function OrdersPage() {
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {filteredOrders.map((order) => (
-                      <>
-                        <tr key={order.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => toggleOrderDetails(order.id)}>
+                      <React.Fragment key={order.id}> {/* Add key here */}
+                        <tr className="hover:bg-gray-50 cursor-pointer" onClick={() => toggleOrderDetails(order.id)}>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">{order.id}</td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">{order.customer}</td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{order.date}</td>
@@ -467,48 +437,11 @@ export default function OrdersPage() {
                         {expandedOrder === order.id && (
                           <tr>
                             <td colSpan={6} className="px-6 py-4 bg-gray-50">
-                              <div className="grid grid-cols-3 gap-4 mb-4">
-                                <div>
-                                  <p className="text-sm font-medium text-gray-500">Contact Number</p>
-                                  <p className="text-sm text-gray-900">{order.contactNumber}</p>
-                                </div>
-                                <div>
-                                  <p className="text-sm font-medium text-gray-500">Email</p>
-                                  <p className="text-sm text-gray-900">{order.email}</p>
-                                </div>
-                                <div>
-                                  <p className="text-sm font-medium text-gray-500">Notes</p>
-                                  <p className="text-sm text-gray-900">{order.notes || 'No notes'}</p>
-                                </div>
-                              </div>
-                              
-                              <p className="text-sm font-medium text-gray-500 mb-2">Items</p>
-                              <div className="overflow-x-auto">
-                                <table className="min-w-full divide-y divide-gray-200">
-                                  <thead className="bg-gray-100">
-                                    <tr>
-                                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Product</th>
-                                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Quantity</th>
-                                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Price</th>
-                                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Subtotal</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody className="divide-y divide-gray-200">
-                                    {order.items.map((item, index) => (
-                                      <tr key={index}>
-                                        <td className="px-4 py-2 text-sm text-gray-900">{item.product}</td>
-                                        <td className="px-4 py-2 text-sm text-gray-900">{item.quantity}</td>
-                                        <td className="px-4 py-2 text-sm text-gray-900">${item.price}</td>
-                                        <td className="px-4 py-2 text-sm text-gray-900">${(item.price * item.quantity).toFixed(2)}</td>
-                                      </tr>
-                                    ))}
-                                  </tbody>
-                                </table>
-                              </div>
+                              {/* Expanded order details */}
                             </td>
                           </tr>
                         )}
-                      </>
+                      </React.Fragment>
                     ))}
                   </tbody>
                 </table>
