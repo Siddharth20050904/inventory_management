@@ -1,6 +1,6 @@
 "use client";
-import React from 'react';
 
+import React from 'react';
 import { useState } from 'react';
 import { 
   LayoutDashboard, Users, FileText, ShoppingCart, 
@@ -8,29 +8,32 @@ import {
 } from 'lucide-react';
 import Sidebar from '../../components/sidebar';
 
+import { getCustomers, addCustomer, updateCustomer } from '../../../server_actions/handleCustomers';
+
+interface Customer {
+  id: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+}
+
 export default function CustomersPage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<{
-    id: number;
+    id: string;
     name: string;
     email: string;
     phone: string;
     address: string;
-    totalOrders: number;
-    totalSpent: string;
   } | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   
   // Sample customers data
-  const [customers, setCustomers] = useState([
-    { id: 1, name: "John Smith", email: "john@example.com", phone: "555-123-4567", address: "123 Main St, City", totalOrders: 12, totalSpent: "$3,450.00" },
-    { id: 2, name: "Sarah Johnson", email: "sarah@example.com", phone: "555-987-6543", address: "456 Oak Ave, Town", totalOrders: 8, totalSpent: "$2,140.50" },
-    { id: 3, name: "Michael Brown", email: "michael@example.com", phone: "555-456-7890", address: "789 Pine Rd, Village", totalOrders: 15, totalSpent: "$4,780.25" },
-    { id: 4, name: "Emily Davis", email: "emily@example.com", phone: "555-789-0123", address: "101 Maple Dr, County", totalOrders: 5, totalSpent: "$1,250.75" },
-    { id: 5, name: "David Wilson", email: "david@example.com", phone: "555-321-6547", address: "202 Elm St, District", totalOrders: 10, totalSpent: "$2,890.00" },
-  ]);
+  const defaultCustomers: Customer[] = [];
+  const [customers, setCustomers] = useState(defaultCustomers);
 
   // Form state for adding/editing customer
   const [formData, setFormData] = useState({
@@ -49,12 +52,26 @@ export default function CustomersPage() {
     { name: "Godown", href: "/godown", icon: <Package size={20} /> },
   ];
 
+  const fetchCustomers = async () => {
+    const customersData = await getCustomers();
+    setCustomers(customersData.map(customer => ({
+      ...customer,
+      email: customer.email ?? undefined,
+      phone: customer.phone ?? undefined,
+      address: customer.address ?? undefined,
+    })));
+  }
+
+  React.useEffect(() => {
+    fetchCustomers();
+  }, []);
+
   const openAddModal = () => {
     setFormData({name: '', email: '', phone: '', address: ''});
     setIsAddModalOpen(true);
   };
 
-  const openEditModal = (customer: { id: number; name: string; email: string; phone: string; address: string; totalOrders: number; totalSpent: string; }) => {
+  const openEditModal = (customer: { id: string; name: string; email: string; phone: string; address: string;}) => {
     setFormData({
       name: customer.name,
       email: customer.email,
@@ -63,7 +80,8 @@ export default function CustomersPage() {
     });
     setSelectedCustomer(customer);
     setIsAddModalOpen(true);
-  };  const openDeleteModal = (customer: { id: number; name: string; email: string; phone: string; address: string; totalOrders: number; totalSpent: string; }) => {
+  };  
+  const openDeleteModal = (customer: { id: string; name: string; email: string; phone: string; address: string;}) => {
     setSelectedCustomer(customer);
     setIsDeleteModalOpen(true);
   };
@@ -78,23 +96,47 @@ export default function CustomersPage() {
     const { name, value } = e.target;
     setFormData(prev => ({...prev, [name]: value}));
   };
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (selectedCustomer) {
       // Edit existing customer
-      setCustomers(customers.map(c => 
-        c.id === selectedCustomer.id 
-          ? {...c, ...formData} 
-          : c
-      ));
+      const formDataToSubmit = new FormData();
+      formDataToSubmit.append("id", selectedCustomer.id);
+      formDataToSubmit.append("name", formData.name);
+      formDataToSubmit.append("email", formData.email);
+      formDataToSubmit.append("phone", formData.phone);
+      formDataToSubmit.append("address", formData.address);
+      
+      const editedCustomer = await updateCustomer(formDataToSubmit);
+      setCustomers(customers.map(c => c.id === selectedCustomer.id ? {
+        ...editedCustomer,
+        email: editedCustomer.email ?? undefined,
+        phone: editedCustomer.phone ?? undefined,
+        address: editedCustomer.address ?? undefined,
+      } : c));
+      setFormData({name: '', email: '', phone: '', address: ''});
+      setSelectedCustomer(null);
+      setIsAddModalOpen(false);
+      fetchCustomers();
+      closeModals();
     } else {
       // Add new customer
-      const newCustomer = {
-        id: customers.length + 1,
-        ...formData,
-        totalOrders: 0,
-        totalSpent: "$0.00"
-      };
-      setCustomers([...customers, newCustomer]);
+      const formDataToSubmit = new FormData();
+      formDataToSubmit.append("name", formData.name);
+      formDataToSubmit.append("email", formData.email);
+      formDataToSubmit.append("phone", formData.phone);
+      formDataToSubmit.append("address", formData.address);
+      const newCustomer = await addCustomer(formDataToSubmit);
+      setCustomers([...customers, {
+        ...newCustomer,
+        email: newCustomer.email ?? undefined,
+        phone: newCustomer.phone ?? undefined,
+        address: newCustomer.address ?? undefined,
+      }]);
+      setFormData({name: '', email: '', phone: '', address: ''});
+      setSelectedCustomer(null);
+      setIsAddModalOpen(false);
+      closeModals();
+      fetchCustomers();
     }
     
     closeModals();
@@ -106,8 +148,8 @@ export default function CustomersPage() {
 
   const filteredCustomers = customers.filter(customer => 
     customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    customer.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    customer.phone.includes(searchTerm)
+    customer.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    customer.phone?.includes(searchTerm)
   );
 
   return (
@@ -159,8 +201,6 @@ export default function CustomersPage() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Address</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Orders</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Spent</th>
                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
@@ -178,21 +218,25 @@ export default function CustomersPage() {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {customer.address}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {customer.totalOrders}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {customer.totalSpent}
-                        </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <button 
-                            onClick={() => openEditModal(customer)}
+                            onClick={() => openEditModal({ 
+                              ...customer, 
+                              email: customer.email ?? '', 
+                              phone: customer.phone ?? '', 
+                              address: customer.address ?? '' 
+                            })}
                             className="text-blue-600 hover:text-blue-900 mr-3"
                           >
                             <Edit size={16} />
                           </button>
                           <button 
-                            onClick={() => openDeleteModal(customer)}
+                            onClick={() => openDeleteModal({ 
+                              ...customer, 
+                              email: customer.email ?? '', 
+                              phone: customer.phone ?? '', 
+                              address: customer.address ?? '' 
+                            })}
                             className="text-red-600 hover:text-red-900"
                           >
                             <Trash2 size={16} />
@@ -216,7 +260,7 @@ export default function CustomersPage() {
 
       {/* Add/Edit Customer Modal */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center">
+        <div className="fixed inset-0 text-black bg-gray-600 bg-opacity-50 flex items-center justify-center">
           <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-medium text-gray-900">

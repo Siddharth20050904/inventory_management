@@ -38,24 +38,22 @@ model Order {
 
 model OrderItem {
   id        String   @default(cuid()) @id
-  product   String   // Name of the product
-  quantity  Int
-  price     Float    // Price per unit
-  order     Order    @relation(fields: [orderId], references: [id])
-  orderId   String
+  productName String   // Name of the product
+  quantity    Int
+  price       Float    // Price per unit
+  orderId     String
+  order       Order    @relation(fields: [orderId], references: [id])
+  productId   String
+  product     Product   @relation(fields: [productId], references: [id], name: "ProductToOrderItems")
 }
 
 model Product {
   id            String   @default(cuid()) @id
   name          String
   category      String
-  sku           String   @unique
   price         Float
-  costPrice     Float
   quantity      Int
-  reorderLevel  Int
-  location      String
-  supplier      String
   description   String?
   lastUpdated   DateTime @default(now())
+  orderItems    OrderItem[] @relation("ProductToOrderItems")
 }
