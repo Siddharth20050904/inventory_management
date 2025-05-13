@@ -50,7 +50,6 @@ model OrderItem {
 model Product {
   id            String   @default(cuid()) @id
   name          String
-  category      String
   price         Float
   quantity      Int
   description   String?

@@ -1,53 +1,33 @@
 "use client";
-
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { 
   LayoutDashboard, Users, FileText, ShoppingCart, 
   Package, Bell, Search, 
   Plus, Trash2, Save, Edit, RefreshCw,
-  ChevronDown, ChevronUp, AlertTriangle
+  ChevronDown, ChevronUp
 } from 'lucide-react';
 import Sidebar from '@/components/sidebar';
+import { getProducts, addProduct, updateProduct, deleteProduct } from '../../../server_actions/handleGodown';
 
 export default function GodownPage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isAddingProduct, setIsAddingProduct] = useState(false);
   const [isEditingProduct, setIsEditingProduct] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterCategory, setFilterCategory] = useState('');
   const [sortConfig, setSortConfig] = useState<{ key: keyof typeof initialProductForm; direction: 'asc' | 'desc' }>({ key: 'name', direction: 'asc' });
-  const [editProductId, setEditProductId] = useState<number | null>(null);
+  const [editProductId, setEditProductId] = useState<string | null>(null);
 
   const initialProductForm = {
     name: '',
-    category: '',
-    sku: '',
     price: '',
-    costPrice: '',
     quantity: '',
-    reorderLevel: '',
-    location: '',
-    supplier: '',
     description: ''
   };
   const [productForm, setProductForm] = useState(initialProductForm);
 
   // Sample data for products
-  const [products, setProducts] = useState([
-    { id: 1, name: "Wireless Headphones", category: "Electronics", sku: "EL-WH-001", price: 129.99, costPrice: 79.99, quantity: 45, reorderLevel: 10, location: "Rack A1", supplier: "Tech Distributors Inc.", lastUpdated: "2025-05-08", description: "Premium wireless headphones with noise cancellation." },
-    { id: 2, name: "Phone Case", category: "Accessories", sku: "AC-PC-002", price: 24.99, costPrice: 8.50, quantity: 120, reorderLevel: 30, location: "Rack B3", supplier: "Mobile Accessories Ltd.", lastUpdated: "2025-05-09", description: "Durable protection case for smartphones." },
-    { id: 3, name: "Gaming Monitor", category: "Electronics", sku: "EL-GM-003", price: 899.99, costPrice: 650.00, quantity: 12, reorderLevel: 5, location: "Section C, Shelf 2", supplier: "Gaming Tech Co.", lastUpdated: "2025-05-07", description: "27-inch 4K gaming monitor with 144Hz refresh rate." },
-    { id: 4, name: "Keyboard", category: "Computer Peripherals", sku: "CP-KB-004", price: 199.99, costPrice: 120.00, quantity: 30, reorderLevel: 8, location: "Rack D2", supplier: "Computing Solutions", lastUpdated: "2025-05-08", description: "Mechanical keyboard with RGB backlighting." },
-    { id: 5, name: "Mouse", category: "Computer Peripherals", sku: "CP-MS-005", price: 89.99, costPrice: 45.00, quantity: 42, reorderLevel: 15, location: "Rack D1", supplier: "Computing Solutions", lastUpdated: "2025-05-10", description: "Ergonomic wireless mouse with customizable buttons." },
-    { id: 6, name: "Desk Chair", category: "Furniture", sku: "FN-DC-006", price: 349.99, costPrice: 200.00, quantity: 8, reorderLevel: 3, location: "Section F, Floor Level", supplier: "Office Furniture Inc.", lastUpdated: "2025-05-05", description: "Adjustable ergonomic office chair with lumbar support." },
-    { id: 7, name: "Desk Lamp", category: "Lighting", sku: "LT-DL-007", price: 79.99, costPrice: 35.00, quantity: 25, reorderLevel: 7, location: "Rack E4", supplier: "Home Essentials Co.", lastUpdated: "2025-05-09", description: "LED desk lamp with adjustable brightness." },
-    { id: 8, name: "Cable Management Kit", category: "Accessories", sku: "AC-CM-008", price: 29.99, costPrice: 12.00, quantity: 55, reorderLevel: 20, location: "Rack B4", supplier: "Office Supplies Ltd.", lastUpdated: "2025-05-07", description: "Complete set for organizing cables and wires." },
-    { id: 9, name: "USB Hub", category: "Computer Peripherals", sku: "CP-UH-009", price: 39.99, costPrice: 18.50, quantity: 60, reorderLevel: 15, location: "Rack D3", supplier: "Tech Imports Co.", lastUpdated: "2025-05-06", description: "7-port USB hub with power adapter." },
-    { id: 10, name: "HDMI Cable", category: "Accessories", sku: "AC-HC-010", price: 19.99, costPrice: 5.00, quantity: 80, reorderLevel: 25, location: "Rack B2", supplier: "Cable Solutions", lastUpdated: "2025-05-08", description: "6ft high-speed HDMI cable with gold plated connectors." },
-  ]);
-
-  // Extract unique categories for filtering
-  const categories = [...new Set(products.map(product => product.category))];
+  const initialProducts: Product[] = [];
+  const [products, setProducts] = useState(initialProducts);
 
   const navigationItems = [
     { name: "Dashboard", href: "/dashboard", icon: <LayoutDashboard size={20} /> },
@@ -69,14 +49,7 @@ export default function GodownPage() {
     let filteredProducts = [...products];
     if (searchTerm) {
       filteredProducts = filteredProducts.filter(product => 
-        product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.supplier.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-    if (filterCategory) {
-      filteredProducts = filteredProducts.filter(product => 
-        product.category === filterCategory
+        product.name.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
     if (sortConfig.key) {
@@ -90,16 +63,10 @@ export default function GodownPage() {
   };
 
   interface Product {
-    id: number;
+    id: string;
     name: string;
-    category: string;
-    sku: string;
     price: number;
-    costPrice: number;
     quantity: number;
-    reorderLevel: number;
-    location: string;
-    supplier: string;
     lastUpdated: string;
     description: string;
   }
@@ -107,14 +74,8 @@ export default function GodownPage() {
   const handleEditProduct = (product: Product) => {
     setProductForm({
       name: product.name,
-      category: product.category,
-      sku: product.sku,
       price: product.price.toString(),
-      costPrice: product.costPrice.toString(),
       quantity: product.quantity.toString(),
-      reorderLevel: product.reorderLevel.toString(),
-      location: product.location,
-      supplier: product.supplier,
       description: product.description
     });
     setEditProductId(product.id);
@@ -122,39 +83,72 @@ export default function GodownPage() {
     setIsAddingProduct(true);
   };
 
-  const handleSubmitProduct = (e: React.FormEvent<HTMLFormElement>) => {
-    if (e) {
-      e.preventDefault();
-    }
+  const handleSubmitProduct = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault(); // Prevent the default form submission behavior
+    
     const formattedProduct = {
       ...productForm,
       price: parseFloat(productForm.price),
-      costPrice: parseFloat(productForm.costPrice),
       quantity: parseInt(productForm.quantity),
-      reorderLevel: parseInt(productForm.reorderLevel),
       lastUpdated: new Date().toISOString().slice(0, 10)
     };
-    if (isEditingProduct) {
-      setProducts(products.map(product => 
-        product.id === editProductId ? { ...formattedProduct, id: editProductId } : product
-      ));
+
+    
+    if (isEditingProduct && editProductId !== null) {
+      const formData = new FormData();
+      formData.append("id", editProductId);
+      formData.append("name", formattedProduct.name);
+      formData.append("price", formattedProduct.price.toString());
+      formData.append("quantity", formattedProduct.quantity.toString());
+      formData.append("description", formattedProduct.description);
+      formData.append("lastUpdated", formattedProduct.lastUpdated);
+
+      const updatedProduct = await updateProduct(formData);
+      const updatedProducts = products.map(product =>
+        product.id === editProductId
+          ? { 
+              ...product, 
+              ...updatedProduct, 
+              lastUpdated: updatedProduct.lastUpdated.toISOString(),
+              description: updatedProduct.description ?? '' // Ensure description is always a string
+            }
+          : product
+      );
+      setProducts(updatedProducts);
       setIsEditingProduct(false);
+      setEditProductId(null);
+      setProductForm(initialProductForm);
+      setIsAddingProduct(false);
     } else {
-      const newProductId = Math.max(...products.map(p => p.id)) + 1;
-      setProducts([...products, { ...formattedProduct, id: newProductId }]);
+      const formData = new FormData();
+      formData.append("name", formattedProduct.name);
+      formData.append("price", formattedProduct.price.toString());
+      formData.append("quantity", formattedProduct.quantity.toString());
+      formData.append("description", formattedProduct.description);
+      formData.append("lastUpdated", formattedProduct.lastUpdated);
+
+      const newProduct = await addProduct(formData);
+      setProducts([...products, { ...newProduct, id: newProduct.id, lastUpdated: newProduct.lastUpdated.toISOString(), description: newProduct.description ?? '' }]);
+      setIsAddingProduct(false);
+      setProductForm(initialProductForm);
+      setIsEditingProduct(false);
+      setEditProductId(null);
+      setIsAddingProduct(false);
     }
+    
     setProductForm(initialProductForm);
     setIsAddingProduct(false);
   };
 
-  const handleDeleteProduct = (productId: number) => {
+  const handleDeleteProduct = async (productId: string) => {
     if (window.confirm('Are you sure you want to delete this product?')) {
-      setProducts(products.filter(product => product.id !== productId));
+      const deletedProduct = await deleteProduct(productId);
+      setProducts(products.filter(product => product.id != deletedProduct.id));
     }
   };
+  
   const resetFilters = () => {
     setSearchTerm('');
-    setFilterCategory('');
     setSortConfig({ key: 'name', direction: 'asc' });
   };
 
@@ -163,8 +157,21 @@ export default function GodownPage() {
   const inventoryStats = {
     totalProducts: products.length,
     totalValue: products.reduce((sum, product) => sum + (product.price * product.quantity), 0).toFixed(2),
-    lowStock: products.filter(product => product.quantity <= product.reorderLevel).length
   };
+
+  const getProductsData = async () => {
+    const productsData = await getProducts();
+    setProducts(productsData.map(product => ({
+      ...product,
+      id: product.id, // Convert id to number
+      lastUpdated: product.lastUpdated.toISOString(), // Convert Date to string
+      description: product.description ?? '', // Provide default value for description
+    })));
+  }
+
+  useEffect(() => {
+    getProductsData();
+  }, []);
 
   return (
     <div className="flex h-screen bg-gray-100">
@@ -226,7 +233,7 @@ export default function GodownPage() {
           </div>
           
           {/* Inventory Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <div className="bg-white p-6 rounded-lg shadow">
               <div className="flex items-center justify-between">
                 <div>
@@ -243,22 +250,10 @@ export default function GodownPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-gray-500">Inventory Value</p>
-                  <h3 className="text-2xl text-black font-bold mt-1">${inventoryStats.totalValue}</h3>
+                  <h3 className="text-2xl text-black font-bold mt-1">₹{inventoryStats.totalValue}</h3>
                 </div>
                 <div className="bg-green-50 p-3 rounded-full">
                   <ShoppingCart className="h-8 w-8 text-green-500" />
-                </div>
-              </div>
-            </div>
-            
-            <div className="bg-white p-6 rounded-lg shadow">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-gray-500">Low Stock Items</p>
-                  <h3 className="text-2xl text-black font-bold mt-1">{inventoryStats.lowStock}</h3>
-                </div>
-                <div className="bg-red-50 p-3 rounded-full">
-                  <AlertTriangle className="h-8 w-8 text-red-500" />
                 </div>
               </div>
             </div>
@@ -270,7 +265,7 @@ export default function GodownPage() {
               <h3 className="text-lg font-semibold text-gray-800 mb-4">
                 {isEditingProduct ? 'Edit Product' : 'Add New Product'}
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Product Name</label>
                   <input 
@@ -278,30 +273,6 @@ export default function GodownPage() {
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500" 
                     value={productForm.name}
                     onChange={(e) => setProductForm({...productForm, name: e.target.value})}
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-                  <select
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    value={productForm.category}
-                    onChange={(e) => setProductForm({...productForm, category: e.target.value})}
-                    required
-                  >
-                    <option value="">Select category</option>
-                    {categories.map(cat => (
-                      <option key={cat} value={cat}>{cat}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">SKU</label>
-                  <input 
-                    type="text"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    value={productForm.sku}
-                    onChange={(e) => setProductForm({...productForm, sku: e.target.value})}
                     required
                   />
                 </div>
@@ -317,17 +288,6 @@ export default function GodownPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Cost Price (₹)</label>
-                  <input 
-                    type="number"
-                    step="0.01"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    value={productForm.costPrice}
-                    onChange={(e) => setProductForm({...productForm, costPrice: e.target.value})}
-                    required
-                  />
-                </div>
-                <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Quantity</label>
                   <input 
                     type="number"
@@ -337,35 +297,7 @@ export default function GodownPage() {
                     required
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Reorder Level</label>
-                  <input 
-                    type="number"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    value={productForm.reorderLevel}
-                    onChange={(e) => setProductForm({...productForm, reorderLevel: e.target.value})}
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
-                  <input 
-                    type="text"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    value={productForm.location}
-                    onChange={(e) => setProductForm({...productForm, location: e.target.value})}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Supplier</label>
-                  <input 
-                    type="text"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    value={productForm.supplier}
-                    onChange={(e) => setProductForm({...productForm, supplier: e.target.value})}
-                  />
-                </div>
-                <div className="md:col-span-3">
+                <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
                   <textarea
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -404,18 +336,6 @@ export default function GodownPage() {
             >
               <RefreshCw size={16} className="mr-1" /> Reset Filters
             </button>
-            <div>
-              <select
-                className="px-3 py-1 border text-black border-gray-300 rounded"
-                value={filterCategory}
-                onChange={e => setFilterCategory(e.target.value)}
-              >
-                <option value="" className='text-black'>All Categories</option>
-                {categories.map(cat => (
-                  <option className='text-black' key={cat} value={cat}>{cat}</option>
-                ))}
-              </select>
-            </div>
           </div>
 
           {/* Product Table */}
@@ -426,40 +346,30 @@ export default function GodownPage() {
                   <th className="px-4 py-2 cursor-pointer" onClick={() => requestSort('name')}>
                     Name {sortConfig.key === 'name' && (sortConfig.direction === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}
                   </th>
-                  <th className="px-4 py-2">Category</th>
-                  <th className="px-4 py-2">SKU</th>
                   <th className="px-4 py-2 cursor-pointer" onClick={() => requestSort('price')}>
                     Price {sortConfig.key === 'price' && (sortConfig.direction === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}
                   </th>
-                  <th className="px-4 py-2">Cost Price</th>
                   <th className="px-4 py-2 cursor-pointer" onClick={() => requestSort('quantity')}>
                     Qty {sortConfig.key === 'quantity' && (sortConfig.direction === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}
                   </th>
-                  <th className="px-4 py-2">Reorder</th>
-                  <th className="px-4 py-2">Location</th>
-                  <th className="px-4 py-2">Supplier</th>
                   <th className="px-4 py-2">Last Updated</th>
+                  <th className="px-4 py-2">Description</th>
                   <th className="px-4 py-2">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {displayedProducts.length === 0 && (
                   <tr>
-                    <td colSpan={11} className="px-4 py-4 text-center text-gray-500">No products found.</td>
+                    <td colSpan={7} className="px-4 py-4 text-center text-gray-500">No products found.</td>
                   </tr>
                 )}
                 {displayedProducts.map(product => (
-                  <tr key={product.id} className={product.quantity <= product.reorderLevel ? 'bg-red-50' : ''}>
+                  <tr key={product.id} className='text-center'>
                     <td className="px-4 py-2 font-medium text-gray-900">{product.name}</td>
-                    <td className="px-4 py-2">{product.category}</td>
-                    <td className="px-4 py-2">{product.sku}</td>
                     <td className="px-4 py-2">₹{product.price.toFixed(2)}</td>
-                    <td className="px-4 py-2">₹{product.costPrice.toFixed(2)}</td>
                     <td className="px-4 py-2">{product.quantity}</td>
-                    <td className="px-4 py-2">{product.reorderLevel}</td>
-                    <td className="px-4 py-2">{product.location}</td>
-                    <td className="px-4 py-2">{product.supplier}</td>
                     <td className="px-4 py-2">{product.lastUpdated}</td>
+                    <td className="px-4 py-2 truncate max-w-xs">{product.description}</td>
                     <td className="px-4 py-2 space-x-2">
                       <button
                         className="text-blue-600 hover:text-blue-900"

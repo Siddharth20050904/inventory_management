@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import Sidebar from '../../components/sidebar';
 
-import { getCustomers, addCustomer, updateCustomer } from '../../../server_actions/handleCustomers';
+import { getCustomers, addCustomer, updateCustomer, deleteCustomer } from '../../../server_actions/handleCustomers';
 
 interface Customer {
   id: string;
@@ -142,8 +142,10 @@ export default function CustomersPage() {
     closeModals();
   };
 
-  const handleDelete = () => {
-    setCustomers(customers.filter(c => c.id !== selectedCustomer?.id));    closeModals();
+  const handleDelete = async (id: string) => {
+    const deletedCustomer = await deleteCustomer(id);
+    setCustomers(customers.filter(c => c.id !== deletedCustomer?.id));
+    closeModals();
   };
 
   const filteredCustomers = customers.filter(customer => 
@@ -353,7 +355,7 @@ export default function CustomersPage() {
                 Cancel
               </button>
               <button
-                onClick={handleDelete}
+                onClick={() => handleDelete(selectedCustomer.id)}
                 className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700"
               >
                 Delete
