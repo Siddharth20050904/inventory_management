@@ -32,6 +32,8 @@ model Order {
   totalCost     Float        @default(0.0)
   notes         String?
   status        String       @default("Pending") // e.g., Pending, Delivered, etc.
+  deliveryDate  DateTime?
+  paymentStatus String?    // e.g., Paid, Unpaid
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
 }

@@ -8,98 +8,40 @@ import {
   Package, LogOut, Menu, X, Bell, Search, 
   Plus, Trash2, Save, ChevronDown
 } from 'lucide-react';
+
 import React from 'react';
+import { Customer, Order, Product } from '@prisma/client';
+
+import { getOrders, createOrder, updateOrderStatus, updateOrder } from '../../../server_actions/handleOrders';
+import { getCustomers } from '../../../server_actions/handleCustomers';
+import { getProducts } from '../../../server_actions/handleGodown';
 
 export default function OrdersPage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isAddingOrder, setIsAddingOrder] = useState(false);
   const [orderForm, setOrderForm] = useState({
+    customerId: '',
     customerName: '',
     contactNumber: '',
     email: '',
-    items: [{ product: '', quantity: 1, price: 0 }],
-    notes: ''
+    items: [{ productName: '', quantity: 1, price: 0, productId: '' }],
+    notes: '',
+    deliveryDate: ''
   });
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
+  const [editModalOpen, setEditModalOpen] = useState(false);
   
   // Sample data for orders
-  const [orders, setOrders] = useState([
-    { 
-      id: "ORD-7892", 
-      customer: "John Smith", 
-      date: "2025-05-10", 
-      status: "Delivered", 
-      amount: "$345.00",
-      items: [
-        { product: "Wireless Headphones", quantity: 1, price: 129.99 },
-        { product: "Phone Case", quantity: 2, price: 24.99 }
-      ],
-      contactNumber: "555-123-4567",
-      email: "john.smith@example.com",
-      notes: "Leave package at the front door"
-    },
-    { 
-      id: "ORD-7891", 
-      customer: "Sarah Johnson", 
-      date: "2025-05-10", 
-      status: "Processing", 
-      amount: "$1,290.00",
-      items: [
-        { product: "Gaming Monitor", quantity: 1, price: 899.99 },
-        { product: "Keyboard", quantity: 1, price: 199.99 },
-        { product: "Mouse", quantity: 1, price: 89.99 }
-      ],
-      contactNumber: "555-987-6543",
-      email: "sarah.j@example.com",
-      notes: "Call before delivery"
-    },
-    { 
-      id: "ORD-7890", 
-      customer: "Michael Brown", 
-      date: "2025-05-09", 
-      status: "Pending", 
-      amount: "$780.50",
-      items: [
-        { product: "Desk Chair", quantity: 1, price: 349.99 },
-        { product: "Desk Lamp", quantity: 2, price: 79.99 },
-        { product: "Cable Management Kit", quantity: 1, price: 29.99 }
-      ],
-      contactNumber: "555-456-7890",
-      email: "m.brown@example.com",
-      notes: ""
-    },
-    { 
-      id: "ORD-7889", 
-      customer: "Emily Davis", 
-      date: "2025-05-09", 
-      status: "Delivered", 
-      amount: "$120.75",
-      items: [
-        { product: "USB Hub", quantity: 1, price: 39.99 },
-        { product: "HDMI Cable", quantity: 2, price: 19.99 },
-        { product: "Webcam Cover", quantity: 3, price: 4.99 }
-      ],
-      contactNumber: "555-789-0123",
-      email: "emily.d@example.com",
-      notes: "Business address, delivery hours 9-5"
-    },
-  ]);
+  const Order: (Order & { items: { productName: string; quantity: number; price: number; productId: string }[] })[] = [];
+  const [orders, setOrders] = useState(Order);
+
+  const Product: Product[] = [];
   
   // Sample product data
-  const products = [
-    { name: "Wireless Headphones", price: 129.99, stock: 45 },
-    { name: "Phone Case", price: 24.99, stock: 120 },
-    { name: "Gaming Monitor", price: 899.99, stock: 12 },
-    { name: "Keyboard", price: 199.99, stock: 30 },
-    { name: "Mouse", price: 89.99, stock: 42 },
-    { name: "Desk Chair", price: 349.99, stock: 8 },
-    { name: "Desk Lamp", price: 79.99, stock: 25 },
-    { name: "Cable Management Kit", price: 29.99, stock: 55 },
-    { name: "USB Hub", price: 39.99, stock: 60 },
-    { name: "HDMI Cable", price: 19.99, stock: 80 },
-    { name: "Webcam Cover", price: 4.99, stock: 150 },
-  ];
+  const [productList, setProductList] = useState(Product); // Flatten the array to use it directly
 
   // Navigation items
   const navigationItems = [
@@ -110,6 +52,41 @@ export default function OrdersPage() {
     { name: "Godown", href: "/godown", icon: <Package size={20} /> },
   ];
 
+  const [customersList, setCustomersList] = useState<Customer[]>([]);
+
+  const getCustomersList = async () => {
+    try {
+      const customers = await getCustomers();
+      setCustomersList(customers);
+    } catch (error) {
+      console.error('Error fetching customers:', error);
+    }
+  }
+
+  const getProductsList = async () => {
+    try {
+      const products = await getProducts();
+      setProductList(products);
+    } catch (error) {
+      console.error('Error fetching products:', error);
+    }
+  }
+
+  const getOrdersList = async () => {
+    try {
+      const orders = await getOrders();
+      setOrders(orders);
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+    }
+  }
+
+  useEffect(() =>{
+    getCustomersList();
+    getProductsList();
+    getOrdersList();
+  }, []);
+
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
   };
@@ -117,7 +94,7 @@ export default function OrdersPage() {
   const addItemToOrder = () => {
     setOrderForm({
       ...orderForm,
-      items: [...orderForm.items, { product: '', quantity: 1, price: 0 }]
+      items: [...orderForm.items, { productName: '', quantity: 1, price: 0, productId: '' }]
     });
   };
   
@@ -130,78 +107,169 @@ export default function OrdersPage() {
     });
   };
   
-  const handleItemChange = (index: number, field: string, value: string | number) => {
+  const handleItemChange = (index: number, field: string, value: string | number | { productName: string; productId: string; price: number }) => {
     const updatedItems = [...orderForm.items];
-    
     if (field === 'product') {
-      // Find selected product price
-      const selectedProduct = products.find(p => p.name === value);
-      updatedItems[index] = {
-        ...updatedItems[index],
-        [field]: String(value),
-        price: selectedProduct ? selectedProduct.price : 0
-      };
-    } else {
-      updatedItems[index] = {
-        ...updatedItems[index],
-        [field]: value
-      };
-    }
-    
+    // Update multiple fields (productName, productId, and price)
+    updatedItems[index] = {
+      ...updatedItems[index],
+      productName: typeof value === 'object' && 'productName' in value ? value.productName : '',
+      productId: typeof value === 'object' && 'productId' in value ? value.productId : '',
+      price: typeof value === 'object' && 'price' in value ? value.price : 0,
+    };
+  } else {
+    // Update a single field
+    updatedItems[index] = {
+      ...updatedItems[index],
+      [field]: value,
+    };
+  }
     setOrderForm({
       ...orderForm,
       items: updatedItems
     });
-  };    const calculateTotal = () => {    return orderForm.items.reduce((total, item) => {
+
+    console.log("Updated Items:", updatedItems);
+  };
+
+  const calculateTotal = () => {    
+    return orderForm.items.reduce((total, item) => {
       return total + (item.price * item.quantity);
     }, 0).toFixed(2);
   };
   
-  const handleSubmitOrder = () => {
-    // Generate a new order ID
-    const newOrderId = `ORD-${7893 + orders.length}`;
-    
-    // Create new order
-    const newOrder = {
-      id: newOrderId,
-      customer: orderForm.customerName,
-      date: new Date().toISOString().slice(0, 10),
-      status: "Pending",
-      amount: `$${calculateTotal()}`,
-      items: orderForm.items,
-      contactNumber: orderForm.contactNumber,
-      email: orderForm.email,
-      notes: orderForm.notes
-    };
-    
-    // Add new order to list
-    setOrders([newOrder, ...orders]);
-    
-    // Reset form
-    setOrderForm({
-      customerName: '',
-      contactNumber: '',
-      email: '',
-      items: [{ product: '', quantity: 1, price: 0 }],
-      notes: ''
+const handleSubmitOrder = async () => {
+  // Generate a new order ID
+  if(editModalOpen){
+    const updatedOrder = await updateOrder(selectedOrderId || '', {
+      ...orderForm,
+      id: selectedOrderId || '',
+      totalCost: parseFloat(calculateTotal()),
+      status: "Pending", // or fetch the current status if needed
+      createdAt: new Date(), // or use the existing createdAt value
+      updatedAt: new Date(),
+      deliveryDate: orderForm.deliveryDate ? new Date(orderForm.deliveryDate) : null,
+      items: orderForm.items.map((item, index) => ({
+        id: `ITEM-${selectedOrderId || ''}-${index + 1}`, // Ensure unique IDs for items
+        productName: item.productName,
+        quantity: item.quantity,
+        price: item.price,
+        productId: item.productId,
+        orderId: selectedOrderId || '',
+      })),
     });
-    
-    // Close form
+
+    setOrders((prevOrders) =>
+      prevOrders.map((order) =>
+        order.id === selectedOrderId ? { ...order, ...updatedOrder } : order
+      )
+    );
+
+    setOrderForm({
+    customerId: "",
+    customerName: "",
+    contactNumber: "",
+    email: "",
+    items: [{ productName: "", quantity: 1, price: 0, productId: "" }],
+    notes: "",
+    deliveryDate: ""
+    });
+    setEditModalOpen(false);
     setIsAddingOrder(false);
+    return;
+  }
+  const newOrderId = `ORD-${7893 + orders.length}`;
+
+  // Calculate the total cost
+  const totalCost = orderForm.items.reduce((total, item) => {
+    return total + item.price * item.quantity;
+  }, 0);
+
+  // Create new order
+  const newOrder = {
+    customerId: orderForm.customerId,
+    customerName: orderForm.customerName,
+    contactNumber: orderForm.contactNumber,
+    email: orderForm.email,
+    items: orderForm.items.map((item, index) => ({
+      id: `ITEM-${newOrderId}-${index + 1}`, // Generate a unique ID for each item
+      productName: item.productName,
+      quantity: item.quantity,
+      price: item.price,
+      productId: item.productId,
+      orderId: newOrderId,
+    })),
+    totalCost: totalCost,
+    notes: orderForm.notes,
+    status: "Pending",
+    deliveryDate: orderForm.deliveryDate ? new Date(orderForm.deliveryDate) : null,
+    paymentStatus: "Unpaid",
+    createdAt: new Date(),
+    updatedAt: new Date(),
   };
-  
-  const toggleOrderDetails = (orderId: string) => {
+
+  const addedOrder = await createOrder({ id: newOrderId, ...newOrder });  
+
+  // Add new order to list
+  setOrders([{ ...addedOrder, items: newOrder.items }, ...orders]);
+
+  // Reset form
+  setOrderForm({
+    customerId: "",
+    customerName: "",
+    contactNumber: "",
+    email: "",
+    items: [{ productName: "", quantity: 1, price: 0, productId: "" }],
+    notes: "",
+    deliveryDate: ""
+  });
+
+  // Close form
+  setIsAddingOrder(false);
+};  const toggleOrderDetails = (orderId: string) => {
     if (expandedOrder === orderId) {
       setExpandedOrder(null);
     } else {
       setExpandedOrder(orderId);
     }
+    setSelectedOrderId(orderId);
   };
-  
+
+  const handleUpdateStatus = async (orderId: string, newStatus: string) => {
+    await updateOrderStatus(orderId);
+    setOrders((prevOrders) =>
+      prevOrders.map((order) =>
+        order.id === orderId ? { ...order, status: newStatus } : order
+      )
+    );
+  };
+
   const filteredOrders = orders.filter(order => {
-    return order.customer.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    return order.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
            order.id.toLowerCase().includes(searchTerm.toLowerCase());
   });
+
+  const handleEdit = (orderId: string) => {
+    const order = orders.find((order) => order.id === orderId);
+    if (order) {
+      setOrderForm({
+        customerId: order.customerId,
+        customerName: order.customerName,
+        contactNumber: order.contactNumber || '',
+        email: order.email || '',
+        items: order.items.map((item) => ({
+          productName: item.productName,
+          quantity: item.quantity,
+          price: item.price,
+          productId: item.productId,
+        })),
+        notes: order.notes || '',
+        deliveryDate: order.deliveryDate ? order.deliveryDate.toISOString().split('T')[0] : '',
+      });
+      setEditModalOpen(true);
+      setIsAddingOrder(true);
+    }
+  };
 
   return (
     <div className="flex h-screen bg-gray-100">
@@ -260,18 +328,28 @@ export default function OrdersPage() {
           
           {/* Order Form */}
           {isAddingOrder && (
-            <div className="bg-white rounded-lg shadow mb-6 p-6">
+            <div className="bg-white rounded-lg shadow mb-6 p-6 text-black">
               <h3 className="text-lg font-semibold text-gray-800 mb-4">Create New Order</h3>
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Customer Name</label>
-                  <input 
-                    type="text" 
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500" 
+                  <select
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
                     value={orderForm.customerName}
-                    onChange={(e) => setOrderForm({...orderForm, customerName: e.target.value})}
-                  />
+                    onChange={(e) => {
+                      setOrderForm({...orderForm,
+                       customerName: e.target.value.split(',')[0], customerId: e.target.value.split(',')[1], email: e.target.value.split(',')[2], contactNumber: e.target.value.split(',')[3]});
+                       setSelectedCustomerId(e.target.value.split(',')[1]);
+                    }}
+                  >
+                    <option value="">Select a customer</option>
+                    {customersList.map((customer) => (
+                      <option key={customer.id} value={[customer.name, customer.id, customer.email,customer.phone].join(',')}>
+                        {customer.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Contact Number</label>
@@ -291,6 +369,15 @@ export default function OrdersPage() {
                     onChange={(e) => setOrderForm({...orderForm, email: e.target.value})}
                   />
                 </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Delivery Date</label>
+                  <input
+                    type="date"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    value={orderForm.deliveryDate || ''}
+                    onChange={(e) => setOrderForm({ ...orderForm, deliveryDate: e.target.value })}
+                  />
+                </div>
               </div>
               
               <div className="mb-4">
@@ -306,36 +393,51 @@ export default function OrdersPage() {
                 
                 {orderForm.items.map((item, index) => (
                   <div key={index} className="flex items-end space-x-4 mb-2">
-                    <div className="flex-grow">
+                    <div className="flex-grow text-black">
                       <label className="block text-sm font-medium text-gray-700 mb-1">Product</label>
-                      <select 
+                      <select
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-                        value={item.product}
-                        onChange={(e) => handleItemChange(index, 'product', e.target.value)}
+                        value={item.productId}
+                        onChange={(e) => {
+                          const selectedProduct = productList.find(product => product.id === e.target.value);
+                          if (selectedProduct) {
+                            handleItemChange(index, 'product', {
+                              productName: selectedProduct.name,
+                              productId: selectedProduct.id,
+                              price: selectedProduct.price,
+                            });
+                          }
+                        }}
                       >
-                        <option value="">Select a product</option>
-                        {products.map((product) => (
-                          <option key={product.name} value={product.name}>
-                            {product.name} - ${product.price} (Stock: {product.stock})
+                        <option value="">{item.productName ? item.productName : "Select a product"}</option>
+                        {productList.map((product) => (
+                          <option key={product.id} value={product.id}>
+                            {product.name} | (Stock: {product.quantity})
                           </option>
                         ))}
                       </select>
                     </div>
                     <div className="w-24">
                       <label className="block text-sm font-medium text-gray-700 mb-1">Quantity</label>
-                      <input 
-                        type="number" 
+                      <input
+                        type="number"
                         min="1"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500" 
+                        step="1"
+                        className="w-full text-black px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
                         value={item.quantity}
-                        onChange={(e) => handleItemChange(index, 'quantity', parseInt(e.target.value) || 1)}
+                        onChange={(e) => handleItemChange(index, 'quantity', e.target.value)}
                       />
                     </div>
                     <div className="w-24">
                       <label className="block text-sm font-medium text-gray-700 mb-1">Price</label>
-                      <div className="px-3 py-2 border border-gray-200 bg-gray-50 rounded-md text-gray-700">
-                        ${item.price}
-                      </div>
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        className="w-full text-black px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        value={item.price}
+                        onChange={(e) => handleItemChange(index, 'price', e.target.value)}
+                      />
                     </div>
                     <div className="w-24">
                       <label className="block text-sm font-medium text-gray-700 mb-1">Subtotal</label>
@@ -343,7 +445,7 @@ export default function OrdersPage() {
                         ${(item.price * item.quantity).toFixed(2)}
                       </div>
                     </div>
-                    <button 
+                    <button
                       onClick={() => removeItemFromOrder(index)}
                       className="p-2 text-red-500 hover:text-red-700"
                       disabled={orderForm.items.length === 1}
@@ -354,7 +456,7 @@ export default function OrdersPage() {
                 ))}
                 
                 <div className="flex justify-end mt-4">
-                  <div className="text-lg font-semibold">
+                  <div className="text-lg text-black font-semibold">
                     Total: ${calculateTotal()}
                   </div>
                 </div>
@@ -380,7 +482,7 @@ export default function OrdersPage() {
                 <button 
                   className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center"
                   onClick={handleSubmitOrder}
-                  disabled={!orderForm.customerName || orderForm.items.some(item => !item.product)}
+                  disabled={!orderForm.customerName || orderForm.items.some(item => !item.productName || item.quantity <= 0 || item.price <= 0)}
                 >
                   <Save size={18} className="mr-1" /> Save Order
                 </button>
@@ -397,10 +499,9 @@ export default function OrdersPage() {
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order ID</th>
+                    <tr> 
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Delievery Date</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
                       <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
@@ -408,11 +509,13 @@ export default function OrdersPage() {
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {filteredOrders.map((order) => (
-                      <React.Fragment key={order.id}> {/* Add key here */}
+                      <React.Fragment key={order.id}>
+
                         <tr className="hover:bg-gray-50 cursor-pointer" onClick={() => toggleOrderDetails(order.id)}>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">{order.id}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">{order.customer}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{order.date}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">{order.customerName}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {order.deliveryDate ? order.deliveryDate.toLocaleDateString() : 'N/A'}
+                          </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <span className={`px-2 py-1 text-xs rounded-full ${
                               order.status === 'Delivered' 
@@ -424,10 +527,10 @@ export default function OrdersPage() {
                               {order.status}
                             </span>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{order.amount}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{order.totalCost || 'N/A'}</td>
                           <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium flex justify-end items-center">
-                            <a href="#" className="text-blue-600 hover:text-blue-900 mr-3">View</a>
-                            <a href="#" className="text-gray-600 hover:text-gray-900 mr-3">Edit</a>
+                            <a className="text-blue-600 hover:text-blue-900 mr-3">View</a>
+                            <a className="text-gray-600 hover:text-gray-900 mr-3" onClick={() => handleEdit(order.id)}>Edit</a>
                             <ChevronDown 
                               size={16} 
                               className={`transform transition-transform ${expandedOrder === order.id ? 'rotate-180' : ''}`} 
@@ -438,6 +541,45 @@ export default function OrdersPage() {
                           <tr>
                             <td colSpan={6} className="px-6 py-4 bg-gray-50">
                               {/* Expanded order details */}
+                              <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                  <h4 className="font-medium text-gray-700">Contact Number</h4>
+                                  <p className="text-gray-500">{order.contactNumber}</p>
+                                </div>
+                                <div>
+                                  <h4 className="font-medium text-gray-700">Email</h4>
+                                  <p className="text-gray-500">{order.email}</p>
+                                </div>
+                                <div>
+                                  <h4 className="font-medium text-gray-700">Notes</h4>
+                                  <p className="text-gray-500">{order.notes || 'No notes provided'}</p>
+                                </div>
+                                <div>
+                                  <h4 className="font-medium text-gray-700">Order Items</h4>
+                                  <ul className="list-disc pl-5">
+                                    {order.items.map((item, index : number) => (
+                                      <li key={index} className="text-gray-500">
+                                        {item.productName} - {item.quantity} x ${item.price.toFixed(2)} = ${(item.quantity * item.price).toFixed(2)}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                                <div>
+                                  <h4 className="font-medium text-gray-700">Total Amount</h4>
+                                  <p className="text-gray-500">{order.totalCost}</p>
+                                </div>
+                                </div>
+                                {/* Mark as Delivered Button */}
+                                {order.status !== 'Delivered' && (
+                                  <div className="flex justify-end mt-4">
+                                    <button
+                                      onClick={() => handleUpdateStatus(order.id, 'Delivered')}
+                                      className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+                                    >
+                                      Mark as Delivered
+                                    </button>
+                                  </div>
+                                )}
                             </td>
                           </tr>
                         )}
