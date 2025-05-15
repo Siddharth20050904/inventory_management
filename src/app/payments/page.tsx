@@ -19,6 +19,7 @@ export default function PendingPaymentsPage() {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isMarkPaidOpen, setIsMarkPaidOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [expandedPayment, setExpandedPayment] = useState<string | null>(null);
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
   }
@@ -31,7 +32,7 @@ export default function PendingPaymentsPage() {
     notes: string;
   } | null>(null);
 
-  const Order: Order = {
+  const Order: Order & { items: { productName: string; quantity: number; price: number; productId: string }[] } = {
     id: '',
     customerId: '',
     customerName: '',
@@ -40,7 +41,9 @@ export default function PendingPaymentsPage() {
     totalCost: 0,
     notes: null,
     status: '',
+    items: [],
     deliveryDate: null,
+    paymentDueDate: null,
     paymentStatus: null,
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -55,6 +58,9 @@ export default function PendingPaymentsPage() {
     dueDate: string;
     status: string;
     notes: string;
+    contactNumber: string | null;
+    email: string | null;
+    items: Array<{ productName: string; quantity: number; price: number }>;
   }>>([]);
 
   // Navigation items
@@ -69,6 +75,14 @@ export default function PendingPaymentsPage() {
   const toggleFilterMenu = () => {
     setIsFilterOpen(!isFilterOpen);
   };
+
+  const togglePaymentDetails = (paymentId: string) => {
+  if (expandedPayment === paymentId) {
+    setExpandedPayment(null);
+  } else {
+    setExpandedPayment(paymentId);
+  }
+};
 
   const openMarkPaidModal = (payment: { id: string; customer: string; amount: string; dueDate: string; status: string; notes: string; }) => {
     setSelectedPayment(payment);
@@ -105,12 +119,19 @@ export default function PendingPaymentsPage() {
         status: order.paymentStatus || 'Pending',
         dueDate: order.deliveryDate ? new Date(order.deliveryDate).toLocaleDateString() : 'N/A',
         notes: order.notes || '',
+        contactNumber: order.contactNumber || 'N/A',
+        email: order.email || 'N/A',
+        items: order.items.map((item) => ({
+          productName: item.productName,
+          quantity: item.quantity,
+          price: item.price,
+        })),
       }));
       setPayments([...paymentsData]);
     } catch (error) {
       console.error('Error fetching orders:', error);
     }
-  }
+  };
   useEffect(() => {
     getOrdersList();
   }, []);
@@ -211,47 +232,107 @@ export default function PendingPaymentsPage() {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {filteredPayments.length > 0 ? (
                     filteredPayments.map((payment) => (
-                      <tr key={payment.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">{payment.customer}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">{payment.amount}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center text-sm text-gray-500">
-                            <Calendar size={14} className="mr-1" />
-                            {payment.dueDate}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 py-1 text-xs rounded-full ${
-                            payment.status === 'Pending' 
-                              ? 'bg-yellow-100 text-yellow-800'
-                              : 'bg-red-100 text-red-800'
-                          }`}>
-                            {payment.status}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <button 
-                            onClick={() => openMarkPaidModal(payment)}
-                            className="text-green-600 hover:text-green-900 mr-3"
-                          >
-                            Mark Paid
-                          </button>
-                          <button 
-                            onClick={() => handleSendReminder(payment)}
-                            className="text-blue-600 hover:text-blue-900"
-                          >
-                            Send Reminder
-                          </button>
-                        </td>
-                      </tr>
+                      <React.Fragment key={payment.id}>
+                        <tr
+                          className="hover:bg-gray-50 cursor-pointer"
+                          onClick={() => togglePaymentDetails(payment.id)}
+                        >
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm text-gray-900">{payment.customer}</div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-medium text-gray-900">{payment.amount}</div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center text-sm text-gray-500">
+                              <Calendar size={14} className="mr-1" />
+                              {payment.dueDate}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span
+                              className={`px-2 py-1 text-xs rounded-full ${
+                                payment.status === 'Pending'
+                                  ? 'bg-yellow-100 text-yellow-800'
+                                  : 'bg-red-100 text-red-800'
+                              }`}
+                            >
+                              {payment.status}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation(); // Prevent row click from toggling
+                                openMarkPaidModal(payment);
+                              }}
+                              className="text-green-600 hover:text-green-900 mr-3"
+                            >
+                              Mark Paid
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation(); // Prevent row click from toggling
+                                handleSendReminder(payment);
+                              }}
+                              className="text-blue-600 hover:text-blue-900"
+                            >
+                              Send Reminder
+                            </button>
+                          </td>
+                        </tr>
+                        {expandedPayment === payment.id && (
+                          <tr>
+                            <td colSpan={5} className="px-6 py-4 bg-gray-50">
+                              {/* Extended Payment Details */}
+                              <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                  <h4 className="font-medium text-gray-700">Customer</h4>
+                                  <p className="text-gray-500">{payment.customer}</p>
+                                </div>
+                                <div>
+                                  <h4 className="font-medium text-gray-700">Amount</h4>
+                                  <p className="text-gray-500">{payment.amount}</p>
+                                </div>
+                                <div>
+                                  <h4 className="font-medium text-gray-700">Due Date</h4>
+                                  <p className="text-gray-500">{payment.dueDate}</p>
+                                </div>
+                                <div>
+                                  <h4 className="font-medium text-gray-700">Status</h4>
+                                  <p className="text-gray-500">{payment.status}</p>
+                                </div>
+                                <div>
+                                  <h4 className="font-medium text-gray-700">Contact Number</h4>
+                                  <p className="text-gray-500">{payment.contactNumber || 'N/A'}</p>
+                                </div>
+                                <div>
+                                  <h4 className="font-medium text-gray-700">Email</h4>
+                                  <p className="text-gray-500">{payment.email || 'N/A'}</p>
+                                </div>
+                                <div className="col-span-2">
+                                  <h4 className="font-medium text-gray-700">Items</h4>
+                                  <ul className="text-gray-500 list-disc list-inside">
+                                    {payment.items.map((item, index) => (
+                                      <li key={index}>
+                                        {item.productName} - {item.quantity} x ${item.price.toFixed(2)}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                                <div className="col-span-2">
+                                  <h4 className="font-medium text-gray-700">Notes</h4>
+                                  <p className="text-gray-500">{payment.notes || 'No notes available'}</p>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={7} className="px-6 py-4 text-center text-sm text-gray-500">
+                      <td colSpan={5} className="px-6 py-4 text-center text-sm text-gray-500">
                         No payments found
                       </td>
                     </tr>

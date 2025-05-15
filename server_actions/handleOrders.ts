@@ -43,6 +43,7 @@ interface Order {
   notes?: string;
   status: string; // e.g., "Pending", "Delivered", etc.
   deliveryDate?: Date | null;
+  paymentDueDate?: Date | null;
   paymentStatus?: string; // e.g., "Paid", "Unpaid"
   createdAt: Date;
   updatedAt: Date;
@@ -60,13 +61,15 @@ export async function createOrder(orderData: Order & { items: OrderItem[] }) {
             quantity: parseInt(item.quantity.toString(), 10),
             price: item.price,
             productName: item.productName,
-            product: { connect: { id: item.productId } }, // Correctly connect the product
+            product: { connect: { id: item.productId } },
           })),
         },
         contactNumber: orderData.contactNumber,
         email: orderData.email,
         notes: orderData.notes,
         deliveryDate: orderData.deliveryDate,
+        paymentDueDate: orderData.paymentDueDate,
+        paymentStatus: orderData.paymentStatus,
         status: orderData.status,
         totalCost: orderData.totalCost,
       },
@@ -75,16 +78,16 @@ export async function createOrder(orderData: Order & { items: OrderItem[] }) {
   } catch (error) {
     console.error('Error creating order:', error);
     throw new Error('Failed to create order');
-  } finally{
+  } finally {
     try {
       for (const item of orderData.items) {
         await prisma.product.update({
           where: {
-            id: item.productId, // Match the product by its ID
+            id: item.productId,
           },
           data: {
             quantity: {
-              decrement: parseInt(item.quantity.toString(), 10), // Decrement by the ordered quantity
+              decrement: parseInt(item.quantity.toString(), 10),
             },
           },
         });
@@ -92,6 +95,23 @@ export async function createOrder(orderData: Order & { items: OrderItem[] }) {
     } catch (error) {
       console.error('Error updating product quantities:', error);
       throw new Error('Failed to update product quantities');
+    } finally {
+      try {
+
+        await prisma.customer.update({
+          where: {
+            id: orderData.customerId,
+          },
+          data: {
+            paymentPending: {
+              increment: parseInt(orderData.totalCost.toString(), 10),
+            },
+          },
+        });
+      } catch (error) {
+        console.error('Error updating customer orders in createOrder:', error);
+        throw new Error('Failed to update customer orders');
+      }
     }
   }
 }
@@ -128,6 +148,8 @@ export async function updateOrder(orderId: string, orderData: Order & { items: O
         email: orderData.email,
         notes: orderData.notes,
         deliveryDate: orderData.deliveryDate,
+        paymentDueDate: orderData.paymentDueDate,
+        paymentStatus: orderData.paymentStatus,
         status: orderData.status,
         totalCost: orderData.totalCost,
         items: {

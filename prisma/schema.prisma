@@ -2,6 +2,7 @@
 
 generator client {
   provider = "prisma-client-js"
+  output   = "./node_modules/@prisma/client" // Explicit output path
 }
 
 datasource db {
@@ -17,6 +18,7 @@ model Customer {
   phone         String?
   address       String?
   orders        Order[]      // Relation to orders placed by the customer
+  paymentPending Float?     // Amount pending for payment
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
 }
@@ -33,7 +35,8 @@ model Order {
   notes         String?
   status        String       @default("Pending") // e.g., Pending, Delivered, etc.
   deliveryDate  DateTime?
-  paymentStatus String?    // e.g., Paid, Unpaid
+  paymentDueDate DateTime?
+  paymentStatus String?      @default("Unpaid")// e.g., Paid, Unpaid
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
 }

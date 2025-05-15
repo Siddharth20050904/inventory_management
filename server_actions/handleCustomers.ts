@@ -62,6 +62,7 @@ export async function getCustomers() {
       address: true,
       createdAt: true,
       updatedAt: true,
+      paymentPending: true,
     },
   });
 

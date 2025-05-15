@@ -26,7 +26,9 @@ export default function OrdersPage() {
     email: '',
     items: [{ productName: '', quantity: 1, price: 0, productId: '' }],
     notes: '',
-    deliveryDate: ''
+    deliveryDate: '',
+    paymentDueDate: '',
+    paymentStatus: 'Unpaid',
   });
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
@@ -149,6 +151,8 @@ const handleSubmitOrder = async () => {
       createdAt: new Date(), // or use the existing createdAt value
       updatedAt: new Date(),
       deliveryDate: orderForm.deliveryDate ? new Date(orderForm.deliveryDate) : null,
+      paymentDueDate: orderForm.paymentDueDate ? new Date(orderForm.paymentDueDate) : null,
+      paymentStatus: orders.find((order) => selectedOrderId === order.id)?.paymentStatus || "Unpaid", // or fetch the current payment status if needed
       items: orderForm.items.map((item, index) => ({
         id: `ITEM-${selectedOrderId || ''}-${index + 1}`, // Ensure unique IDs for items
         productName: item.productName,
@@ -172,7 +176,9 @@ const handleSubmitOrder = async () => {
     email: "",
     items: [{ productName: "", quantity: 1, price: 0, productId: "" }],
     notes: "",
-    deliveryDate: ""
+    deliveryDate: "",
+    paymentDueDate: "",
+    paymentStatus: "Unpaid",
     });
     setEditModalOpen(false);
     setIsAddingOrder(false);
@@ -203,6 +209,7 @@ const handleSubmitOrder = async () => {
     notes: orderForm.notes,
     status: "Pending",
     deliveryDate: orderForm.deliveryDate ? new Date(orderForm.deliveryDate) : null,
+    paymentDueDate: orderForm.paymentDueDate ? new Date(orderForm.paymentDueDate) : null,
     paymentStatus: "Unpaid",
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -221,7 +228,9 @@ const handleSubmitOrder = async () => {
     email: "",
     items: [{ productName: "", quantity: 1, price: 0, productId: "" }],
     notes: "",
-    deliveryDate: ""
+    deliveryDate: "",
+    paymentDueDate: "",
+    paymentStatus: "Unpaid",
   });
 
   // Close form
@@ -265,6 +274,8 @@ const handleSubmitOrder = async () => {
         })),
         notes: order.notes || '',
         deliveryDate: order.deliveryDate ? order.deliveryDate.toISOString().split('T')[0] : '',
+        paymentDueDate: order.paymentDueDate ? order.paymentDueDate.toISOString().split('T')[0] : '',
+        paymentStatus: order.paymentStatus || 'Unpaid',
       });
       setEditModalOpen(true);
       setIsAddingOrder(true);
@@ -376,6 +387,15 @@ const handleSubmitOrder = async () => {
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
                     value={orderForm.deliveryDate || ''}
                     onChange={(e) => setOrderForm({ ...orderForm, deliveryDate: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Payment Due Date</label>
+                  <input
+                    type="date"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    value={orderForm.paymentDueDate || ''}
+                    onChange={(e) => setOrderForm({ ...orderForm, paymentDueDate: e.target.value })}
                   />
                 </div>
               </div>
@@ -503,6 +523,7 @@ const handleSubmitOrder = async () => {
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Delievery Date</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment Status</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
                       <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                     </tr>
@@ -525,6 +546,15 @@ const handleSubmitOrder = async () => {
                                   : 'bg-yellow-100 text-yellow-800'
                             }`}>
                               {order.status}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`px-2 py-1 text-xs rounded-full ${
+                              order.paymentStatus === 'Paid' 
+                                ? 'bg-green-100 text-green-800' 
+                                : 'bg-red-100 text-red-800'
+                            }`}>
+                              {order.paymentStatus}
                             </span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{order.totalCost || 'N/A'}</td>

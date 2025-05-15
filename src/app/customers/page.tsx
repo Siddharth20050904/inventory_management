@@ -9,13 +9,13 @@ import {
 import Sidebar from '../../components/sidebar';
 
 import { getCustomers, addCustomer, updateCustomer, deleteCustomer } from '../../../server_actions/handleCustomers';
-
 interface Customer {
   id: string;
   name: string;
   email?: string;
   phone?: string;
   address?: string;
+  paymentPending?: number;
 }
 
 export default function CustomersPage() {
@@ -59,6 +59,7 @@ export default function CustomersPage() {
       email: customer.email ?? undefined,
       phone: customer.phone ?? undefined,
       address: customer.address ?? undefined,
+      paymentPending: customer.paymentPending ?? undefined,
     })));
   }
 
@@ -131,6 +132,7 @@ export default function CustomersPage() {
         email: newCustomer.email ?? undefined,
         phone: newCustomer.phone ?? undefined,
         address: newCustomer.address ?? undefined,
+        paymentPending: newCustomer.paymentPending ?? undefined,
       }]);
       setFormData({name: '', email: '', phone: '', address: ''});
       setSelectedCustomer(null);
@@ -203,6 +205,7 @@ export default function CustomersPage() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Address</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment Pending</th>
                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
@@ -219,6 +222,9 @@ export default function CustomersPage() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {customer.address}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">{customer.paymentPending}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <button 
