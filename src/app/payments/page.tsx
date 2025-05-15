@@ -2,13 +2,16 @@
 "use client";
 import React from 'react';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   LayoutDashboard, Users, FileText, ShoppingCart, 
   Package, Search, CheckCircle, Calendar, 
   DollarSign, ChevronDown, X, Filter
 } from 'lucide-react';
 import Sidebar from '@/components/sidebar';
+
+import { getOrders } from '../../../server_actions/handleOrders';
+import { Order } from '@prisma/client';
 
 export default function PendingPaymentsPage() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -23,60 +26,36 @@ export default function PendingPaymentsPage() {
     id: string;
     customer: string;
     amount: string;
-    invoice: string;
     dueDate: string;
     status: string;
     notes: string;
   } | null>(null);
 
+  const Order: Order = {
+    id: '',
+    customerId: '',
+    customerName: '',
+    contactNumber: null,
+    email: null,
+    totalCost: 0,
+    notes: null,
+    status: '',
+    deliveryDate: null,
+    paymentStatus: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+  const orders = [Order];
+
   // Sample payments data
-  const [payments, setPayments] = useState([
-    { 
-      id: "PAY-7892", 
-      customer: "John Smith", 
-      amount: "$3,450.00", 
-      invoice: "INV-5623",
-      dueDate: "2025-05-15", 
-      status: "Pending",
-      notes: "Payment for order #ORD-7892" 
-    },
-    { 
-      id: "PAY-7891", 
-      customer: "Sarah Johnson", 
-      amount: "$1,240.00", 
-      invoice: "INV-5622",
-      dueDate: "2025-05-18", 
-      status: "Overdue",
-      notes: "2nd reminder sent" 
-    },
-    { 
-      id: "PAY-7890", 
-      customer: "Michael Brown", 
-      amount: "$780.50", 
-      invoice: "INV-5620",
-      dueDate: "2025-05-25", 
-      status: "Pending",
-      notes: "" 
-    },
-    { 
-      id: "PAY-7889", 
-      customer: "Emily Davis", 
-      amount: "$2,120.75", 
-      invoice: "INV-5618",
-      dueDate: "2025-05-12", 
-      status: "Overdue",
-      notes: "Customer requested extension" 
-    },
-    { 
-      id: "PAY-7888", 
-      customer: "David Wilson", 
-      amount: "$890.00", 
-      invoice: "INV-5615",
-      dueDate: "2025-06-01", 
-      status: "Pending",
-      notes: "" 
-    },
-  ]);
+  const [payments, setPayments] = useState<Array<{
+    id: string;
+    customer: string;
+    amount: string;
+    dueDate: string;
+    status: string;
+    notes: string;
+  }>>([]);
 
   // Navigation items
   const navigationItems = [
@@ -91,7 +70,7 @@ export default function PendingPaymentsPage() {
     setIsFilterOpen(!isFilterOpen);
   };
 
-  const openMarkPaidModal = (payment: { id: string; customer: string; amount: string; invoice: string; dueDate: string; status: string; notes: string; }) => {
+  const openMarkPaidModal = (payment: { id: string; customer: string; amount: string; dueDate: string; status: string; notes: string; }) => {
     setSelectedPayment(payment);
     setIsMarkPaidOpen(true);
   };
@@ -101,21 +80,40 @@ export default function PendingPaymentsPage() {
   };
 
   const handleMarkAsPaid = () => {
-    setPayments(payments.filter(p => p.id !== selectedPayment?.id));
+    setPayments(payments?.filter(p => p.id !== selectedPayment?.id));
     closeMarkPaidModal();
   };
 
-  const handleSendReminder = (payment: { id: string; customer: string; amount: string; invoice: string; dueDate: string; status: string; notes: string; }) => {
+  const handleSendReminder = (payment: { id: string; customer: string; amount: string; dueDate: string; status: string; notes: string; }) => {
     alert(`Reminder sent to ${payment.customer} for payment ${payment.id}`);
   };
 
   const filteredPayments = payments.filter(payment => {
     const matchesSearchTerm = payment.customer.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      payment.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      payment.invoice.toLowerCase().includes(searchTerm.toLowerCase());
+      payment.id.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = filterStatus === 'all' || payment.status.toLowerCase() === filterStatus.toLowerCase();
     return matchesSearchTerm && matchesStatus;
   });
+
+  const getOrdersList = async () => {
+    try {
+      const orders = await getOrders();
+      const paymentsData = orders.map((order) => ({
+        id: order.id,
+        customer: order.customerName,
+        amount: order.totalCost.toString(),
+        status: order.paymentStatus || 'Pending',
+        dueDate: order.deliveryDate ? new Date(order.deliveryDate).toLocaleDateString() : 'N/A',
+        notes: order.notes || '',
+      }));
+      setPayments([...paymentsData]);
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+    }
+  }
+  useEffect(() => {
+    getOrdersList();
+  }, []);
 
   return (
     <div className="flex h-screen bg-gray-100">
@@ -203,9 +201,7 @@ export default function PendingPaymentsPage() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment ID</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Invoice</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Due Date</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
@@ -217,13 +213,7 @@ export default function PendingPaymentsPage() {
                     filteredPayments.map((payment) => (
                       <tr key={payment.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-blue-600">{payment.id}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-900">{payment.customer}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">{payment.invoice}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-gray-900">{payment.amount}</div>
@@ -288,7 +278,7 @@ export default function PendingPaymentsPage() {
 
       {/* Mark as Paid Modal */}
       {isMarkPaidOpen && selectedPayment && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+        <div className="text-black fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-medium text-gray-900">Mark Payment as Paid</h3>
@@ -302,16 +292,8 @@ export default function PendingPaymentsPage() {
               </p>
               <div className="bg-gray-50 p-4 rounded-md">
                 <div className="flex justify-between mb-2">
-                  <span className="text-sm text-gray-500">Payment ID:</span>
-                  <span className="text-sm font-medium">{selectedPayment.id}</span>
-                </div>
-                <div className="flex justify-between mb-2">
                   <span className="text-sm text-gray-500">Customer:</span>
                   <span className="text-sm font-medium">{selectedPayment.customer}</span>
-                </div>
-                <div className="flex justify-between mb-2">
-                  <span className="text-sm text-gray-500">Invoice:</span>
-                  <span className="text-sm font-medium">{selectedPayment.invoice}</span>
                 </div>
                 <div className="flex justify-between mb-2">
                   <span className="text-sm text-gray-500">Amount:</span>
