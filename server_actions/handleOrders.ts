@@ -59,7 +59,7 @@ export async function createOrder(orderData: Order & { items: { productId: strin
         items: {
           create: orderData.items.map((item) => ({
             quantity: parseInt(item.quantity.toString(), 10),
-            price: item.price,
+            price: parseInt(item.price.toString(), 10),
             productName: item.productName,
             product: { connect: { id: item.productId } },
           })),
