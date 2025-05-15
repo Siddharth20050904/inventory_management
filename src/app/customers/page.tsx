@@ -54,7 +54,7 @@ export default function CustomersPage() {
 
   const fetchCustomers = async () => {
     const customersData = await getCustomers();
-    setCustomers(customersData.map(customer => ({
+    setCustomers(customersData.map((customer: Customer) => ({
       ...customer,
       email: customer.email ?? undefined,
       phone: customer.phone ?? undefined,

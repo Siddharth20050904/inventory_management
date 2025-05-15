@@ -1,6 +1,6 @@
 "use server";
 
-import { OrderItem } from '@prisma/client';
+// Removed OrderItem import as it is not exported from '@prisma/client'
 import prisma from '../lib/prisma';
 
 
@@ -50,7 +50,7 @@ interface Order {
 }
 
 
-export async function createOrder(orderData: Order & { items: OrderItem[] }) {
+export async function createOrder(orderData: Order & { items: { productId: string; quantity: number; price: number; productName: string }[] }) {
   try {
     const order = await prisma.order.create({
       data: {
@@ -116,7 +116,7 @@ export async function createOrder(orderData: Order & { items: OrderItem[] }) {
   }
 }
 
-export async function updateOrder(orderId: string, orderData: Order & { items: OrderItem[] }) {
+export async function updateOrder(orderId: string, orderData: Order & { items: { productId: string; quantity: number; price: number; productName: string }[] }) {
   try {
     // Delete all existing items for the order
     const orderItems = await prisma.orderItem.findMany({
