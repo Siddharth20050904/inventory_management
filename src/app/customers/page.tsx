@@ -12,10 +12,10 @@ import { getCustomers, addCustomer, updateCustomer, deleteCustomer } from '../..
 interface Customer {
   id: string;
   name: string;
-  email?: string;
-  phone?: string;
-  address?: string;
-  paymentPending?: number;
+  email?: string | null;
+  phone?: string | null;
+  address?: string | null;
+  paymentPending?: number | null;
 }
 
 export default function CustomersPage() {
