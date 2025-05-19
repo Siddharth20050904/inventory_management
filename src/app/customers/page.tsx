@@ -224,7 +224,7 @@ export default function CustomersPage() {
                           {customer.address}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">{customer.paymentPending}</div>
+                          <div className="text-sm text-gray-900">{customer.paymentPending || '0'}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <button 

@@ -3,14 +3,13 @@
 // Removed OrderItem import as it is not exported from '@prisma/client'
 import prisma from '../lib/prisma';
 
-
 export async function getOrders() {
   try {
     const orders = await prisma.order.findMany({
-      where:{
+      where: {
         createdAt: {
           gte: new Date(new Date().setDate(new Date().getDate() - 30)),
-        }
+        },
       },
       include: {
         items: {
@@ -48,7 +47,6 @@ interface Order {
   createdAt: Date;
   updatedAt: Date;
 }
-
 
 export async function createOrder(orderData: Order & { items: { productId: string; quantity: number; price: number; productName: string }[] }) {
   try {
@@ -92,26 +90,26 @@ export async function createOrder(orderData: Order & { items: { productId: strin
           },
         });
       }
+
+      const ordersCost = await prisma.order.findMany({
+        where: {
+          customerId: orderData.customerId,
+          paymentStatus: 'Unpaid',
+        },
+        select: {
+          totalCost: true,
+        },
+      });
+
+      const totalCost = ordersCost.reduce((total, order) => total + order.totalCost, 0);
+      await prisma.customer.update({
+        where: { id: orderData.customerId },
+        data: { paymentPending: totalCost },
+      });
+
     } catch (error) {
       console.error('Error updating product quantities:', error);
       throw new Error('Failed to update product quantities');
-    } finally {
-      try {
-
-        await prisma.customer.update({
-          where: {
-            id: orderData.customerId,
-          },
-          data: {
-            paymentPending: {
-              increment: parseInt(orderData.totalCost.toString(), 10),
-            },
-          },
-        });
-      } catch (error) {
-        console.error('Error updating customer orders in createOrder:', error);
-        throw new Error('Failed to update customer orders');
-      }
     }
   }
 }
@@ -122,18 +120,7 @@ export async function updateOrder(orderId: string, orderData: Order & { items: {
     const orderItems = await prisma.orderItem.findMany({
       where: { orderId },
     });
-    for (const item of orderItems) {
-      await prisma.product.update({
-        where: {
-          id: item.productId, // Match the product by its ID
-        },
-        data: {
-          quantity: {
-            increment: parseInt(item.quantity.toString(), 10), // Increment by the old quantity
-          },
-        },
-      });
-    }
+
     await prisma.orderItem.deleteMany({
       where: { orderId },
     });
@@ -155,12 +142,44 @@ export async function updateOrder(orderId: string, orderData: Order & { items: {
         items: {
           create: orderData.items.map((item) => ({
             quantity: parseInt(item.quantity.toString(), 10),
-            price: item.price,
+            price: parseInt(item.price.toString(), 10),
             productName: item.productName,
             product: { connect: { id: item.productId } },
           })),
         },
       },
+    });
+
+    // Update product quantities and customer paymentPending
+    for (const item of orderItems) {
+      // Update product quantities
+      await prisma.product.update({
+        where: {
+          id: item.productId, // Match the product by its ID
+        },
+        data: {
+          quantity: {
+            increment: parseInt(item.quantity.toString(), 10), // Increment by the old quantity
+          },
+        },
+      });
+    }
+
+    const ordersCost = await prisma.order.findMany({
+      where: {
+        customerId: orderData.customerId,
+        paymentStatus: 'Unpaid',
+      },
+      select: {
+        totalCost: true,
+      },
+    });
+
+    const totalCost = ordersCost.reduce((total, order) => total + order.totalCost, 0);
+
+    await prisma.customer.update({
+      where: { id: orderData.customerId },
+      data: { paymentPending: totalCost },
     });
 
     return order;
@@ -186,10 +205,9 @@ export async function updateOrder(orderId: string, orderData: Order & { items: {
       throw new Error('Failed to update product quantities');
     }
   }
-
 }
 
-export async function updateOrderStatus(orderId: string){
+export async function updateOrderStatus(orderId: string) {
   try {
     const order = await prisma.order.update({
       where: { id: orderId },
@@ -201,5 +219,104 @@ export async function updateOrderStatus(orderId: string){
   } catch (error) {
     console.error('Error updating order:', error);
     throw new Error('Failed to update order');
+  }
+}
+
+export async function updateOrderPaymentStatus(orderId: string) {
+  try {
+    const order = await prisma.order.update({
+      where: { id: orderId, paymentStatus: 'Unpaid' },
+      data: {
+        paymentStatus: 'Paid',
+      },
+    });
+
+    const customerId = await prisma.order.findUnique({
+      where: { id: orderId },
+      select: { customerId: true },
+    });
+
+    if (customerId) {
+      await prisma.customer.update({
+        where: { id: customerId.customerId },
+        data: {
+          paymentPending: {
+            decrement: order.totalCost,
+          },
+        },
+      });
+    }
+    
+    return order;
+  } catch (error) {
+    console.error('Error updating order:', error);
+    throw new Error('Failed to update order');
+  }
+}
+
+// Function to get recent 5 orders
+
+export async function getRecentOrders() {
+  try {
+    const recentOrders = await prisma.order.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 5,
+      include: {
+        items: {
+          include: {
+            product: true,
+          },
+        },
+      },
+    });
+    return recentOrders;
+  } catch (error) {
+    console.error('Error fetching recent orders:', error);
+    throw new Error('Failed to fetch recent orders');
+  }
+}
+
+export async function getTotalRevenueThisMonth() {
+  const startOfMonth = new Date();
+  startOfMonth.setDate(1);
+  startOfMonth.setHours(0, 0, 0, 0);
+
+  // Get all order items for orders created this month, including product cost
+  const orderItems = await prisma.orderItem.findMany({
+    where: {
+      order: {
+        createdAt: { gte: startOfMonth },
+        paymentStatus: 'Paid',
+      },
+    },
+    include: {
+      product: true,
+      order: true,
+    }
+  });
+
+  // Calculate total revenue
+  let totalRevenue = 0;
+  for (const item of orderItems) {
+    const salePrice = item.price;
+    const costPrice = item.product?.price ?? 0;
+    totalRevenue += (salePrice - costPrice) * item.quantity;
+  }
+
+  return totalRevenue;
+}
+
+// Function to get orders that are not delivered
+export async function getUnfulfilledOrders() {
+  try {
+    const unfulfilledOrders = await prisma.order.count({
+      where: {
+        status: 'Pending',
+      }
+    });
+    return unfulfilledOrders;
+  } catch (error) {
+    console.error('Error fetching unfulfilled orders:', error);
+    throw new Error('Failed to fetch unfulfilled orders');
   }
 }

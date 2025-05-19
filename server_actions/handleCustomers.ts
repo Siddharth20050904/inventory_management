@@ -18,6 +18,7 @@ export async function addCustomer(formData: FormData) {
       email,
       phone,
       address,
+      paymentPending: 0,
     },
   });
   return customer;

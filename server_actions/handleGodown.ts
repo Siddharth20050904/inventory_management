@@ -63,3 +63,8 @@ export async function deleteProduct(id: string) {
     });
     return product;
 }
+
+export async function getTotalProducts() {
+    const totalProducts = await prisma.product.count();
+    return totalProducts;
+}

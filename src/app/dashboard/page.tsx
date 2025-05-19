@@ -1,31 +1,49 @@
 "use client";
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { 
   LayoutDashboard, Users, FileText, ShoppingCart, 
-  Package, Bell, 
-  TrendingUp, DollarSign, Box, AlertTriangle
+  Package, Bell, DollarSign, Box
 } from 'lucide-react';
 import Sidebar from '../../components/sidebar';
+import { Order as PrismaOrder } from '@prisma/client';
+
+import { getRecentOrders, getTotalRevenueThisMonth, getUnfulfilledOrders } from '../../../server_actions/handleOrders';
+import { getTotalProducts } from '../../../server_actions/handleGodown';
+import React from 'react';
+
+// Define an OrderItem type
+type OrderItem = {
+  productName: string;
+  quantity: number;
+  price: number;
+};
+
+// Extend the Order type to include items
+type Order = PrismaOrder & {
+  items?: OrderItem[];
+};
 
 export default function DashboardLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
+  const [totalRevenue, setTotalRevenue] = useState<number>(0);
+  const [totalProducts, setTotalProducts] = useState<number>(0);
+  const [unfulfilledOrders, setUnfulfilledOrders] = useState<number>(0);
+  
+  const toggleOrderDetails = (orderId: string) => {
+    setExpandedOrder(expandedOrder === orderId ? null : orderId);
+  };
   
   // Sample data for dashboard stats
   const stats = [
-    { title: "Total Revenue", value: "$24,780", icon: <DollarSign className="h-8 w-8 text-blue-500" />, change: "+12%" },
-    { title: "Pending Orders", value: "45", icon: <ShoppingCart className="h-8 w-8 text-yellow-500" />, change: "+5%" },
-    { title: "Low Stock Items", value: "8", icon: <AlertTriangle className="h-8 w-8 text-red-500" />, change: "-3%" },
-    { title: "Total Products", value: "256", icon: <Box className="h-8 w-8 text-green-500" />, change: "+2%" },
+    { title: "Total Revenue this Month", value: `₹${totalRevenue.toLocaleString()}`, icon: <DollarSign className="h-8 w-8 text-blue-500" /> },
+    { title: "Pending Orders", value: `${unfulfilledOrders}`, icon: <ShoppingCart className="h-8 w-8 text-yellow-500" />},
+    { title: "Total Products", value: `${totalProducts}`, icon: <Box className="h-8 w-8 text-green-500" />},
   ];
   
   // Sample data for recent orders
-  const recentOrders = [
-    { id: "ORD-7892", customer: "John Smith", date: "2025-05-10", status: "Delivered", amount: "$345.00" },
-    { id: "ORD-7891", customer: "Sarah Johnson", date: "2025-05-10", status: "Processing", amount: "$1,290.00" },
-    { id: "ORD-7890", customer: "Michael Brown", date: "2025-05-09", status: "Pending", amount: "$780.50" },
-    { id: "ORD-7889", customer: "Emily Davis", date: "2025-05-09", status: "Delivered", amount: "$120.75" },
-  ];
+  const [recentOrders, setRecentOrders]= useState<Order[]>([]);
   
   // Navigation items
   const navigationItems = [
@@ -39,6 +57,23 @@ export default function DashboardLayout() {
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
   };
+
+  const getOrders = async () => {
+    try {
+      const orders = await getRecentOrders();
+      setRecentOrders(orders);
+    } catch (error) {
+      console.error("Error fetching orders:", error);
+      return [];
+    }
+  };
+
+  useEffect(() => {
+    getOrders();
+    getTotalRevenueThisMonth().then(setTotalRevenue);
+    getTotalProducts().then(setTotalProducts);
+    getUnfulfilledOrders().then(setUnfulfilledOrders);
+  }, []);
 
   return (
     <div className="flex h-screen bg-gray-100">
@@ -78,17 +113,13 @@ export default function DashboardLayout() {
           </div>
           
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
             {stats.map((stat, index) => (
               <div key={index} className="bg-white p-6 rounded-lg shadow">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-gray-500">{stat.title}</p>
                     <h3 className="text-2xl text-black font-bold mt-1">{stat.value}</h3>
-                    <p className="text-green-500 flex items-center mt-1">
-                      <TrendingUp size={16} className="mr-1" />
-                      {stat.change}
-                    </p>
                   </div>
                   <div className="bg-blue-50 p-3 rounded-full">
                     {stat.icon}
@@ -107,7 +138,6 @@ export default function DashboardLayout() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order ID</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
@@ -117,27 +147,68 @@ export default function DashboardLayout() {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {recentOrders.map((order) => (
-                    <tr key={order.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">{order.id}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">{order.customer}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{order.date}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 py-1 text-xs rounded-full ${
-                          order.status === 'Delivered' 
-                            ? 'bg-green-100 text-green-800' 
-                            : order.status === 'Processing' 
-                              ? 'bg-blue-100 text-blue-800' 
-                              : 'bg-yellow-100 text-yellow-800'
-                        }`}>
-                          {order.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{order.amount}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <a href="#" className="text-blue-600 hover:text-blue-900 mr-3">View</a>
-                        <a href="#" className="text-gray-600 hover:text-gray-900">Edit</a>
-                      </td>
-                    </tr>
+                    <React.Fragment key={order.id}>
+                      <tr className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">{order.customerName}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {order.deliveryDate ? new Date(order.deliveryDate).toLocaleDateString() : ''}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`px-2 py-1 text-xs rounded-full ${
+                            order.status === 'Delivered' 
+                              ? 'bg-green-100 text-green-800' 
+                              : order.status === 'Processing' 
+                                ? 'bg-blue-100 text-blue-800' 
+                                : 'bg-yellow-100 text-yellow-800'
+                          }`}>
+                            {order.status}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{order.totalCost}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <button
+                            className="text-blue-600 hover:text-blue-900 mr-3"
+                            onClick={() => toggleOrderDetails(order.id)}
+                          >
+                            {expandedOrder === order.id ? "Hide" : "View"}
+                          </button>
+                        </td>
+                      </tr>
+                      {expandedOrder === order.id && (
+                        <tr>
+                          <td colSpan={5} className="px-6 py-4 bg-gray-50">
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <h4 className="font-medium text-gray-700">Contact Number</h4>
+                                <p className="text-gray-500">{order.contactNumber}</p>
+                              </div>
+                              <div>
+                                <h4 className="font-medium text-gray-700">Email</h4>
+                                <p className="text-gray-500">{order.email}</p>
+                              </div>
+                              <div>
+                                <h4 className="font-medium text-gray-700">Notes</h4>
+                                <p className="text-gray-500">{order.notes || 'No notes provided'}</p>
+                              </div>
+                              <div>
+                                <h4 className="font-medium text-gray-700">Order Items</h4>
+                                <ul className="list-disc pl-5">
+                                  {order.items?.map((item, idx) => (
+                                    <li key={idx} className="text-gray-500">
+                                      {item.productName} - {item.quantity} x ${item.price.toFixed(2)} = ${(item.quantity * item.price).toFixed(2)}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                              <div>
+                                <h4 className="font-medium text-gray-700">Total Amount</h4>
+                                <p className="text-gray-500">{order.totalCost}</p>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
                   ))}
                 </tbody>
               </table>

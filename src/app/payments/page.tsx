@@ -1,17 +1,14 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 import React from 'react';
 
 import { useState, useEffect } from 'react';
 import { 
   LayoutDashboard, Users, FileText, ShoppingCart, 
-  Package, Search, CheckCircle, Calendar, 
-  DollarSign, ChevronDown, X, Filter
+  Package, Search, CheckCircle, Calendar, ChevronDown, X, Filter
 } from 'lucide-react';
 import Sidebar from '@/components/sidebar';
 
-import { getOrders } from '../../../server_actions/handleOrders';
-import { Order } from '@prisma/client';
+import { getOrders, updateOrderPaymentStatus } from '../../../server_actions/handleOrders';
 
 export default function PendingPaymentsPage() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -31,24 +28,6 @@ export default function PendingPaymentsPage() {
     status: string;
     notes: string;
   } | null>(null);
-
-  const Order: Order & { items: { productName: string; quantity: number; price: number; productId: string }[] } = {
-    id: '',
-    customerId: '',
-    customerName: '',
-    contactNumber: null,
-    email: null,
-    totalCost: 0,
-    notes: null,
-    status: '',
-    items: [],
-    deliveryDate: null,
-    paymentDueDate: null,
-    paymentStatus: null,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  };
-  const orders = [Order];
 
   // Sample payments data
   const [payments, setPayments] = useState<Array<{
@@ -93,8 +72,9 @@ export default function PendingPaymentsPage() {
     setSelectedPayment(null);
   };
 
-  const handleMarkAsPaid = () => {
-    setPayments(payments?.filter(p => p.id !== selectedPayment?.id));
+  const handleMarkAsPaid = async () => {
+    const updatedPayment = await updateOrderPaymentStatus(selectedPayment?.id || '');
+    setPayments(payments?.filter(p => p.id !== updatedPayment?.id));
     closeMarkPaidModal();
   };
 
@@ -252,34 +232,36 @@ export default function PendingPaymentsPage() {
                           <td className="px-6 py-4 whitespace-nowrap">
                             <span
                               className={`px-2 py-1 text-xs rounded-full ${
-                                payment.status === 'Pending'
-                                  ? 'bg-yellow-100 text-yellow-800'
+                                payment.status === 'Paid'
+                                  ? 'bg-green-100 text-green-800'
                                   : 'bg-red-100 text-red-800'
                               }`}
                             >
                               {payment.status}
                             </span>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation(); // Prevent row click from toggling
-                                openMarkPaidModal(payment);
-                              }}
-                              className="text-green-600 hover:text-green-900 mr-3"
-                            >
-                              Mark Paid
-                            </button>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation(); // Prevent row click from toggling
-                                handleSendReminder(payment);
-                              }}
-                              className="text-blue-600 hover:text-blue-900"
-                            >
-                              Send Reminder
-                            </button>
-                          </td>
+                          {payment.status=="Unpaid" && 
+                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation(); // Prevent row click from toggling
+                                  openMarkPaidModal(payment);
+                                }}
+                                className="text-green-600 hover:text-green-900 mr-3"
+                              >
+                                Mark Paid
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation(); // Prevent row click from toggling
+                                  handleSendReminder(payment);
+                                }}
+                                className="text-blue-600 hover:text-blue-900"
+                              >
+                                Send Reminder
+                              </button>
+                            </td>
+                          }
                         </tr>
                         {expandedPayment === payment.id && (
                           <tr>

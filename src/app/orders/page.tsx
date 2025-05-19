@@ -235,7 +235,8 @@ const handleSubmitOrder = async () => {
 
   // Close form
   setIsAddingOrder(false);
-};  const toggleOrderDetails = (orderId: string) => {
+};  
+const toggleOrderDetails = (orderId: string) => {
     if (expandedOrder === orderId) {
       setExpandedOrder(null);
     } else {
