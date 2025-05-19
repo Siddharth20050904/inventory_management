@@ -320,3 +320,93 @@ export async function getUnfulfilledOrders() {
     throw new Error('Failed to fetch unfulfilled orders');
   }
 }
+
+// Function to get the monthly sales and profit
+export async function getMonthlySalesAndProfit() {
+  const currentDate = new Date();
+  const orderData = [];
+
+  for(let i = 0; i < 12; i++) {
+    const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
+    const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() - i + 1, 0);  
+    const orders = await prisma.order.findMany({
+      where: {
+        createdAt: {
+          gte: startOfMonth,
+          lte: endOfMonth,
+        },
+        paymentStatus: 'Paid',
+      },
+      include: {
+        items: {
+          include: {
+            product: true,
+          },
+        },
+      },
+    });
+    let totalRevenue = 0;
+    let totalProfit = 0;
+    for (const order of orders) {
+      for (const item of order.items) {
+        const salePrice = item.price;
+        const costPrice = item.product?.price ?? 0;
+        totalRevenue += salePrice * item.quantity;
+        totalProfit += (salePrice - costPrice) * item.quantity;
+        }
+    }
+    orderData.push({
+      name: startOfMonth.toLocaleString('default', { month: 'long' }),
+      sales: totalRevenue,
+      profit: totalProfit,
+    });
+  }
+  return orderData.reverse();
+}
+
+// function to get weekly sales and profit
+export async function getWeeklySalesAndProfit() {
+  const currentDate = new Date();
+  const orderData = [];
+  for (let i = 0; i < 7; i++) {
+    const startOfWeek = new Date(currentDate);
+    startOfWeek.setDate(currentDate.getDate() - currentDate.getDay() + i);
+    startOfWeek.setHours(0, 0, 0, 0);
+    const endOfWeek = new Date(currentDate);
+    endOfWeek.setDate(currentDate.getDate() - currentDate.getDay() + i + 6);
+    endOfWeek.setHours(23, 59, 59, 999);
+    const orders = await prisma.order.findMany({
+      where: {
+        createdAt: {
+          gte: startOfWeek,
+          lte: endOfWeek,
+        },
+        paymentStatus: 'Paid',
+      },
+      include: {
+        items: {
+          include: {
+            product: true,
+          },
+        },
+      },
+    });
+    let totalRevenue = 0;
+    let totalProfit = 0;
+    for (const order of orders) {
+      for (const item of order.items) {
+        const salePrice = item.price;
+        const costPrice = item.product?.price ?? 0;
+        totalRevenue += salePrice * item.quantity;
+        totalProfit += (salePrice - costPrice) * item.quantity;
+      }
+    }
+    orderData.push({
+      name: startOfWeek.toLocaleDateString('en-US', { weekday: 'short' }),
+      sales: totalRevenue,
+      profit: totalProfit,
+    });
+    return orderData.reverse();
+  }
+}
+

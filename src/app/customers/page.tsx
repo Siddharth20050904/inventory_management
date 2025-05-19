@@ -4,7 +4,7 @@ import React from 'react';
 import { useState } from 'react';
 import { 
   LayoutDashboard, Users, FileText, ShoppingCart, 
-  Package, Search, Plus, Edit, Trash2, X
+  Package, Search, Plus, Edit, Trash2, X, TrendingUp
 } from 'lucide-react';
 import Sidebar from '../../components/sidebar';
 
@@ -50,6 +50,7 @@ export default function CustomersPage() {
     { name: "Pending Payments", href: "/payments", icon: <FileText size={20} /> },
     { name: "Orders", href: "/orders", icon: <ShoppingCart size={20} /> },
     { name: "Godown", href: "/godown", icon: <Package size={20} /> },
+    { name: "Sales", href: "/sales", icon: <TrendingUp size={20} /> },
   ];
 
   const fetchCustomers = async () => {

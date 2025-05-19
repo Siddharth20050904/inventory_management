@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react';
 import { 
   LayoutDashboard, Users, FileText, ShoppingCart, 
   Package, LogOut, Menu, X, Bell, Search, 
-  Plus, Trash2, Save, ChevronDown
+  Plus, Trash2, Save, ChevronDown, TrendingUp
 } from 'lucide-react';
 
 import React from 'react';
@@ -52,6 +52,7 @@ export default function OrdersPage() {
     { name: "Pending Payments", href: "/payments", icon: <FileText size={20} /> },
     { name: "Orders", href: "/orders", icon: <ShoppingCart size={20} /> },
     { name: "Godown", href: "/godown", icon: <Package size={20} /> },
+    { name: "Sales", href: "/sales", icon: <TrendingUp size={20} /> },
   ];
 
   const [customersList, setCustomersList] = useState<Customer[]>([]);

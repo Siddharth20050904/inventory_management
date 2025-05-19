@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Users, FileText, ShoppingCart, 
   Package, Bell, Search, 
   Plus, Trash2, Save, Edit, RefreshCw,
-  ChevronDown, ChevronUp
+  ChevronDown, ChevronUp, TrendingUp
 } from 'lucide-react';
 import Sidebar from '@/components/sidebar';
 import { getProducts, addProduct, updateProduct, deleteProduct } from '../../../server_actions/handleGodown';
@@ -35,6 +35,7 @@ export default function GodownPage() {
     { name: "Pending Payments", href: "/payments", icon: <FileText size={20} /> },
     { name: "Orders", href: "/orders", icon: <ShoppingCart size={20} /> },
     { name: "Godown", href: "/godown", icon: <Package size={20} /> },
+    { name: "Sales", href: "/sales", icon: <TrendingUp size={20} /> },
   ];
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
