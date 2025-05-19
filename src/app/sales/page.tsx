@@ -57,7 +57,7 @@ export default function SalesPage() {
       const dailyData = await getWeeklySalesAndProfit();
       setSalesData({
         monthly: monthlyData ?? [],
-        daily: dailyData?? []
+        daily: dailyData ?? []
       });
     };
     fetchData();
@@ -146,15 +146,12 @@ export default function SalesPage() {
           </div>
           
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
             <div className="bg-white p-6 rounded-lg shadow">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-gray-500">Total Sales</p>
                   <h3 className="text-black text-2xl font-bold mt-1">₹{totalSales.toLocaleString()}</h3>
-                  <p className="text-green-600 flex items-center text-sm mt-1">
-                    <ArrowUpRight size={16} className="mr-1" /> 8.3% vs prev. period
-                  </p>
                 </div>
                 <div className="bg-blue-50 p-3 rounded-full">
                   <DollarSign className="h-8 w-8 text-blue-500" />
@@ -167,9 +164,6 @@ export default function SalesPage() {
                 <div>
                   <p className="text-gray-500">Total Profit</p>
                   <h3 className="text-black text-2xl font-bold mt-1">₹{totalProfit.toLocaleString()}</h3>
-                  <p className="text-green-600 flex items-center text-sm mt-1">
-                    <ArrowUpRight size={16} className="mr-1" /> 12.2% vs prev. period
-                  </p>
                 </div>
                 <div className="bg-green-50 p-3 rounded-full">
                   <TrendingUp className="h-8 w-8 text-green-500" />
@@ -182,9 +176,6 @@ export default function SalesPage() {
                 <div>
                   <p className="text-gray-500">Profit Margin</p>
                   <h3 className="text-black text-2xl font-bold mt-1">{profitMargin}%</h3>
-                  <p className="text-green-600 flex items-center text-sm mt-1">
-                    <ArrowUpRight size={16} className="mr-1" /> 2.5% vs prev. period
-                  </p>
                 </div>
                 <div className="bg-purple-50 p-3 rounded-full">
                   <Wallet className="h-8 w-8 text-purple-500" />
@@ -200,14 +191,6 @@ export default function SalesPage() {
               <SalesChart data={salesData ? salesData[timeRange] : []} />
             </div>
           </div>
-          
-          {/* Sales vs Profit Bar Chart */}
-          {/* <div className="bg-white text-black rounded-lg shadow mb-6 p-6">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">Sales vs Profit Comparison</h3>
-            <div className="h-80">
-              <SalesVsProfitChart data={salesData? [timeRange] : []} />
-            </div>
-          </div> */}
 
           {/* Top Products Table */}
           <div className="bg-white text-black rounded-lg shadow">
@@ -262,20 +245,6 @@ function SalesChart({ data }: { data: { name: string; sales: number; profit: num
     />
   );
 }
-
-// Sales vs Profit Bar Chart Component
-// function SalesVsProfitChart({ data } : { data: { name: string; sales: number; profit: number; }[] }) {
-//   return (
-//     <BarChartComponent
-//       data={data}
-//       bars={[
-//         { dataKey: 'sales', fill: '#3B82F6', name: 'Sales' },
-//         { dataKey: 'profit', fill: '#10B981', name: 'Profit' }
-//       ]}
-//     />
-//   );
-// }
-
 // Line Chart Component
 function LineChartComponent({ data, lines } : { data: { name: string; sales: number; profit: number; }[]; lines: { dataKey: string; stroke: string; name: string; }[] }) {
   return (
@@ -303,38 +272,8 @@ function LineChartComponent({ data, lines } : { data: { name: string; sales: num
   );
 }
 
-// Bar Chart Component
-// function BarChartComponent({
-//   data,
-//   bars,
-// }: {
-//   data: { name: string; sales: number; profit: number; }[];
-//   bars: { dataKey: string; fill: string; name: string; }[];
-// }) {
-//   return (
-//     <div className="w-full h-full">
-//       <BarChart width={800} height={300} data={data} className="mx-auto">
-//         <CartesianGrid strokeDasharray="3 3" vertical={false} />
-//         <XAxis dataKey="name" />
-//         <YAxis />
-//         <Tooltip />
-//         <Legend />
-//         {bars.map((bar, index) => (
-//           <Bar 
-//             key={index}
-//             dataKey={bar.dataKey} 
-//             fill={bar.fill} 
-//             name={bar.name}
-//             radius={[4, 4, 0, 0]}
-//           />
-//         ))}
-//       </BarChart>
-//     </div>
-//   );
-// }
-
 // Import these missing components to make the charts work
 import { 
-  LineChart, BarChart, CartesianGrid, XAxis, 
+  LineChart, CartesianGrid, XAxis, 
   YAxis, Tooltip, Legend 
 } from 'recharts';

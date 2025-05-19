@@ -356,7 +356,7 @@ const toggleOrderDetails = (orderId: string) => {
                        setSelectedCustomerId(e.target.value.split(',')[1]);
                     }}
                   >
-                    <option value="">Select a customer</option>
+                    <option value="">{orderForm.customerName ? orderForm.customerName : "Select a customer"}</option>
                     {customersList.map((customer) => (
                       <option key={customer.id} value={[customer.name, customer.id, customer.email,customer.phone].join(',')}>
                         {customer.name}

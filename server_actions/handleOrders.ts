@@ -368,18 +368,15 @@ export async function getMonthlySalesAndProfit() {
 export async function getWeeklySalesAndProfit() {
   const currentDate = new Date();
   const orderData = [];
-  for (let i = 0; i < 7; i++) {
-    const startOfWeek = new Date(currentDate);
-    startOfWeek.setDate(currentDate.getDate() - currentDate.getDay() + i);
-    startOfWeek.setHours(0, 0, 0, 0);
-    const endOfWeek = new Date(currentDate);
-    endOfWeek.setDate(currentDate.getDate() - currentDate.getDay() + i + 6);
-    endOfWeek.setHours(23, 59, 59, 999);
+  for (let i = 0; i < 31; i++) {
+    const startOfDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() - i);
+    const endOfDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() - i + 1);
+
     const orders = await prisma.order.findMany({
       where: {
         createdAt: {
-          gte: startOfWeek,
-          lte: endOfWeek,
+          gte: startOfDay,
+          lte: endOfDay,
         },
         paymentStatus: 'Paid',
       },
@@ -402,11 +399,11 @@ export async function getWeeklySalesAndProfit() {
       }
     }
     orderData.push({
-      name: startOfWeek.toLocaleDateString('en-US', { weekday: 'short' }),
+      name: startOfDay.toLocaleDateString('default', { month: 'short', day: 'numeric' }),
       sales: totalRevenue,
       profit: totalProfit,
     });
-    return orderData.reverse();
   }
+  return orderData.reverse();
 }
 
