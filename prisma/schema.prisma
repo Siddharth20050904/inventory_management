@@ -61,3 +61,10 @@ model Product {
   lastUpdated   DateTime @default(now())
   orderItems    OrderItem[] @relation("ProductToOrderItems")
 }
+
+model Admin {
+  id            String   @default(cuid()) @id
+  username       String
+  password       String
+  email          String? @unique
+}
