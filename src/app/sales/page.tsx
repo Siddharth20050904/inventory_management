@@ -10,15 +10,16 @@ import {
 } from 'lucide-react';
 import { Line, Bar } from 'recharts';
 import Sidebar from '@/components/sidebar';
+import ExcelJS from "exceljs";
+import { saveAs } from "file-saver";
 
-import { getMonthlySalesAndProfit, getWeeklySalesAndProfit } from '../../../server_actions/handleOrders';
+import { getMonthlySalesAndProfit, getWeeklySalesAndProfit, getOrdersForMonth } from '../../../server_actions/handleOrders';
 
 type TimeRange = 'monthly' | 'daily';
 
 export default function SalesPage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [timeRange, setTimeRange] = useState<TimeRange>('monthly');
-  const [selectedYear, setSelectedYear] = useState('2025');
 
   // Navigation items
   const navigationItems = [
@@ -62,6 +63,56 @@ export default function SalesPage() {
     };
     fetchData();
   }, []);
+
+  const months = [
+    { value: 0, label: "January" }, { value: 1, label: "February" }, { value: 2, label: "March" },
+    { value: 3, label: "April" }, { value: 4, label: "May" }, { value: 5, label: "June" },
+    { value: 6, label: "July" }, { value: 7, label: "August" }, { value: 8, label: "September" },
+    { value: 9, label: "October" }, { value: 10, label: "November" }, { value: 11, label: "December" }
+  ];
+  const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+
+  async function handleExport(month: number, year: number) {
+    console.log("Exporting data for month:", month, "year:", year);
+    // Fetch sales data for the selected month and year
+    const startOfMonth = new Date(year, month, 1);
+    const endOfMonth = new Date(year, month + 1, 0, 23, 59, 59, 999);
+
+    // You may want to create a server action for this, but for demo:
+    const orders = await getOrdersForMonth(startOfMonth, endOfMonth);
+
+    // Create workbook and worksheet
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Sales Details");
+
+    // Add header row
+    worksheet.addRow([
+      "Order ID", "Customer Name", "Date", "Product", "Quantity", "Price", "Total"
+    ]);
+
+    // Add data rows
+    orders.forEach(order => {
+      order.items.forEach(item => {
+        worksheet.addRow([
+          order.id,
+          order.customerName,
+          new Date(order.createdAt).toLocaleDateString(),
+          item.productName,
+          item.quantity,
+          item.price,
+          item.quantity * item.price
+        ]);
+      });
+    });
+
+    // Generate and download Excel file
+    const buffer = await workbook.xlsx.writeBuffer();
+    saveAs(new Blob([buffer]), `sales_${year}_${month + 1}.xlsx`);
+  }
+  const currentDate = new Date();
+  const currentYear = currentDate.getFullYear();
+  const years = [currentYear, currentYear - 1, currentYear - 2];
 
   return (
     <div className="flex h-screen bg-gray-100">
@@ -108,22 +159,39 @@ export default function SalesPage() {
               <h2 className="text-2xl font-semibold text-gray-800">Sales Overview</h2>
               <p className="text-gray-600">Monitor your sales performance and trends</p>
             </div>
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center text-black space-x-2">
               <div className="relative">
                 <select
-                  value={selectedYear}
-                  onChange={(e) => setSelectedYear(e.target.value)}
+                  value={selectedMonth}
+                  onChange={e => setSelectedMonth(Number(e.target.value))}
                   className="appearance-none bg-white border border-gray-300 px-4 py-2 pr-8 rounded shadow leading-tight focus:outline-none focus:ring-1 focus:ring-blue-500"
                 >
-                  <option value="2025">2025</option>
-                  <option value="2024">2024</option>
-                  <option value="2023">2023</option>
+                  {months.map(m => (
+                    <option key={m.value} value={m.value}>{m.label}</option>
+                  ))}
                 </select>
                 <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
                   <ChevronDown size={16} className="text-gray-400" />
                 </div>
               </div>
-              <button className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 flex items-center">
+              <div className="relative">
+                <select
+                  value={selectedYear}
+                  onChange={e => setSelectedYear(Number(e.target.value))}
+                  className="appearance-none bg-white border border-gray-300 px-4 py-2 pr-8 rounded shadow leading-tight focus:outline-none focus:ring-1 focus:ring-blue-500"
+                >
+                  {years.map(y => (
+                    <option key={y} value={y}>{y}</option>
+                  ))}
+                </select>
+                <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                  <ChevronDown size={16} className="text-gray-400" />
+                </div>
+              </div>
+              <button
+                className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 flex items-center"
+                onClick={() => handleExport(selectedMonth, selectedYear)}
+              >
                 <Download size={16} className="mr-2" /> Export
               </button>
             </div>

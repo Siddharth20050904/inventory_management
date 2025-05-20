@@ -407,3 +407,28 @@ export async function getWeeklySalesAndProfit() {
   return orderData.reverse();
 }
 
+
+export async function getOrdersForMonth(startOfMonth : Date, endOfMonth : Date) {
+  // Ensure startOfMonth and endOfMonth are valid Date objects
+  try {
+    const orders = await prisma.order.findMany({
+      where: {
+        createdAt: {
+          gte: startOfMonth,
+          lte: endOfMonth,
+        },
+      },
+      include: {
+        items: {
+          include: {
+            product: true,
+          },
+        },
+      },
+    });
+    return orders;
+  } catch (error) {
+    console.error('Error fetching orders:', error);
+    throw new Error('Failed to fetch orders');
+  }
+}
