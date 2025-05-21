@@ -1,5 +1,7 @@
 import { LogOut, Menu, X } from 'lucide-react';
 import React from 'react';
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 
 interface SidebarProps {
   isSidebarOpen: boolean;
@@ -7,6 +9,24 @@ interface SidebarProps {
   navigationItems: { name: string; href: string; icon: React.ReactNode }[];
 }
 const Sidebar: React.FC<SidebarProps> = ({ isSidebarOpen, toggleSidebar, navigationItems }) => {
+  const { status } = useSession();
+  const router = useRouter();
+  
+  React.useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.push('/login');
+    }
+  }, [status, router]);
+  
+  // Don't render anything while checking authentication status
+  if (status === 'loading') {
+    return null;
+  }
+  
+  // If unauthenticated, don't render the sidebar
+  if (status === 'unauthenticated') {
+    return null;
+  }
   return (
     <div className={`${isSidebarOpen ? 'w-64' : 'w-20'} bg-gray-900 text-white transition-all duration-300 ease-in-out`}>
       <div className="flex items-center justify-between p-4 border-b border-gray-800">

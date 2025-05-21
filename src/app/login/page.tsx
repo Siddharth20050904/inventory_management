@@ -4,9 +4,14 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { LayoutDashboard, Mail, Lock, User, ArrowRight } from 'lucide-react';
 
-import { registerAdmin, loginAdmin } from '../../../server_actions/handleAdmin';
+import { signIn } from 'next-auth/react';
+
+import { registerAdmin } from '../../../server_actions/handleAdmin';
+import { useSession } from 'next-auth/react';
+import { useEffect } from 'react';
 
 export default function AuthPage() {
+  // const { data: session } = useSession();
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -38,6 +43,8 @@ export default function AuthPage() {
     setLoading(true);
     setError('');
 
+    // Check if user is already logged in
+
     try {
       // Validation
       if (!isLogin && formData.password !== formData.confirmPassword) {
@@ -46,9 +53,14 @@ export default function AuthPage() {
 
       if(!isLogin){
         await registerAdmin({username : formData.name, email : formData.email, password : formData.password});
+        router.push('/login');
       }else{
         try{
-          await loginAdmin({email : formData.email, password : formData.password});
+          await signIn('credentials', {
+            email: formData.email,
+            password: formData.password,
+            redirect: false,
+          });
         }catch(err){
           if (err instanceof Error) {
             setError(err.message);
@@ -57,16 +69,9 @@ export default function AuthPage() {
           }
         }finally{
           setLoading(false);
-          router.push('/sales');
+          router.push('/dashboard');
         }
       }
-
-      // Here you would typically call your authentication API
-      // This is just a placeholder for demonstration
-      setTimeout(() => {
-        // Simulate successful authentication
-        router.push('/dashboard');
-      }, 1500);
     } catch (err) {
       if (err instanceof Error) {
         setError(err.message);
@@ -77,6 +82,14 @@ export default function AuthPage() {
       setLoading(false);
     }
   };
+
+  // Check if user is already logged in
+  const { data: session } = useSession();
+  useEffect(() => {
+    if (session) {
+      router.push('/dashboard');
+    }
+  }, [session, router]);
 
   return (
     <div className="min-h-screen text-black bg-gray-100 flex flex-col justify-center items-center p-4">
