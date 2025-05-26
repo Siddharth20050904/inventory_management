@@ -2,6 +2,7 @@
 
 // Removed OrderItem import as it is not exported from '@prisma/client'
 import prisma from '../lib/prisma';
+import { sendOrderConfirmationEmail } from './mailing';
 
 export async function getOrders() {
   try {
@@ -71,6 +72,18 @@ export async function createOrder(orderData: Order & { items: { productId: strin
         status: orderData.status,
         totalCost: orderData.totalCost,
       },
+    });
+    // Send confirmation email
+    await sendOrderConfirmationEmail({
+      to: orderData.email || '',
+      customerName: orderData.customerName,
+      orderId: order.id,
+      items: orderData.items.map(item => ({
+        name: item.productName,
+        quantity: item.quantity,
+        price: item.price,
+      })),
+      total: orderData.totalCost,
     });
     return order;
   } catch (error) {

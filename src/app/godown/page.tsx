@@ -9,6 +9,9 @@ import {
 import Sidebar from '@/components/sidebar';
 import { getProducts, addProduct, updateProduct, deleteProduct } from '../../../server_actions/handleGodown';
 
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
+
 export default function GodownPage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isAddingProduct, setIsAddingProduct] = useState(false);
@@ -173,6 +176,19 @@ export default function GodownPage() {
   useEffect(() => {
     getProductsData();
   }, []);
+
+  const { status } = useSession();
+  const router = useRouter();
+
+  // Don't render anything while checking authentication status
+  if (status === 'loading') {
+    return null;
+  }
+  // If unauthenticated, don't render the page
+  if (status === 'unauthenticated') {
+    router.push('/login');
+    return null;
+  }
 
   return (
     <div className="flex h-screen bg-gray-100">

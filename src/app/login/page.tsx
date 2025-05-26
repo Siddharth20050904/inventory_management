@@ -16,6 +16,14 @@ export default function AuthPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const router = useRouter();
+  
+  // Check if user is already logged in
+  const { data: session } = useSession();
+  useEffect(() => {
+    if (session) {
+      router.push('/dashboard');
+    }
+  }, [session, router]);
 
   // Form data
   const [formData, setFormData] = useState({
@@ -38,6 +46,8 @@ export default function AuthPage() {
     setError('');
   };
 
+  
+
   const handleSubmit = async (e : React.ChangeEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
@@ -56,20 +66,25 @@ export default function AuthPage() {
         router.push('/login');
       }else{
         try{
-          await signIn('credentials', {
+          const result = await signIn('credentials', {
             email: formData.email,
             password: formData.password,
             redirect: false,
           });
+
+          if(result?.error){
+            setError('Invalid email or password');
+            setLoading(false);
+            return;
+          }
+          setLoading(false);
+          router.push('/dashboard');
         }catch(err){
           if (err instanceof Error) {
             setError(err.message);
           } else {
             setError('Login failed');
           }
-        }finally{
-          setLoading(false);
-          router.push('/dashboard');
         }
       }
     } catch (err) {
@@ -82,14 +97,6 @@ export default function AuthPage() {
       setLoading(false);
     }
   };
-
-  // Check if user is already logged in
-  const { data: session } = useSession();
-  useEffect(() => {
-    if (session) {
-      router.push('/dashboard');
-    }
-  }, [session, router]);
 
   return (
     <div className="min-h-screen text-black bg-gray-100 flex flex-col justify-center items-center p-4">

@@ -1,7 +1,6 @@
 import NextAuth from "next-auth";
 import { authOptions } from "./options";
 
-// Extend the Session type to include 'id' on user
 declare module "next-auth" {
   interface Session {
     user: {
@@ -17,9 +16,6 @@ declare module "next-auth" {
     email?: string | null;
   }
 }
-
-// For NextAuth 4.24.11
-
 
 const handler = NextAuth(authOptions);
 

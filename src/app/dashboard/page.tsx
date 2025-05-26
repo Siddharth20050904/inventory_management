@@ -12,6 +12,9 @@ import { getRecentOrders, getTotalRevenueThisMonth, getUnfulfilledOrders } from 
 import { getTotalProducts } from '../../../server_actions/handleGodown';
 import React from 'react';
 
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
+
 // Define an OrderItem type
 type OrderItem = {
   productName: string;
@@ -24,7 +27,8 @@ type Order = PrismaOrder & {
   items?: OrderItem[];
 };
 
-export default function DashboardLayout() {
+export default function DashboardLayout() {  
+
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
   const [totalRevenue, setTotalRevenue] = useState<number>(0);
@@ -44,6 +48,13 @@ export default function DashboardLayout() {
   
   // Sample data for recent orders
   const [recentOrders, setRecentOrders]= useState<Order[]>([]);
+
+  
+  const { status } = useSession();
+  const router = useRouter();
+  
+  // Don't render anything while checking authentication status
+
   
   // Navigation items
   const navigationItems = [
@@ -75,6 +86,16 @@ export default function DashboardLayout() {
     getTotalProducts().then(setTotalProducts);
     getUnfulfilledOrders().then(setUnfulfilledOrders);
   }, []);
+
+  if (status === 'loading') {
+    return null;
+  }
+  
+  // If unauthenticated, don't render the sidebar
+  if (status === 'unauthenticated') {
+    router.push('/login');
+    return null;
+  }
 
   return (
     <div className="flex h-screen bg-gray-100">

@@ -10,6 +10,9 @@ import Sidebar from '@/components/sidebar';
 
 import { getOrders, updateOrderPaymentStatus } from '../../../server_actions/handleOrders';
 
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
+
 export default function PendingPaymentsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
@@ -116,6 +119,18 @@ export default function PendingPaymentsPage() {
   useEffect(() => {
     getOrdersList();
   }, []);
+
+  const { status } = useSession();
+  const router = useRouter();
+  // Don't render anything while checking authentication status
+  if (status === 'loading') {
+    return null;
+  }
+  // Render the page if authenticated
+  if (status === 'unauthenticated') {
+    router.push('/login');
+    return null;
+  }
 
   return (
     <div className="flex h-screen bg-gray-100">

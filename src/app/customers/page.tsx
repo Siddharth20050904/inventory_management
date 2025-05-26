@@ -18,6 +18,9 @@ interface Customer {
   paymentPending?: number | null;
 }
 
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
+
 export default function CustomersPage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -30,6 +33,8 @@ export default function CustomersPage() {
     address: string;
   } | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const router = useRouter();
+  const { status } = useSession();
   
   // Sample customers data
   const defaultCustomers: Customer[] = [];
@@ -53,6 +58,8 @@ export default function CustomersPage() {
     { name: "Sales", href: "/sales", icon: <TrendingUp size={20} /> },
   ];
 
+  
+
   const fetchCustomers = async () => {
     const customersData = await getCustomers();
     setCustomers(customersData.map((customer: Customer) => ({
@@ -67,6 +74,15 @@ export default function CustomersPage() {
   React.useEffect(() => {
     fetchCustomers();
   }, []);
+
+  if( status === 'loading') {
+    return null;
+  }
+
+  if (status === 'unauthenticated') {
+    router.push('/login');
+    return null;
+  }
 
   const openAddModal = () => {
     setFormData({name: '', email: '', phone: '', address: ''});

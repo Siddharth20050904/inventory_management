@@ -15,9 +15,13 @@ import { saveAs } from "file-saver";
 
 import { getMonthlySalesAndProfit, getWeeklySalesAndProfit, getOrdersForMonth } from '../../../server_actions/handleOrders';
 
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
+
 type TimeRange = 'monthly' | 'daily';
 
 export default function SalesPage() {
+  
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [timeRange, setTimeRange] = useState<TimeRange>('monthly');
 
@@ -73,6 +77,17 @@ export default function SalesPage() {
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
 
+  const { status } = useSession();
+  const router = useRouter();
+
+  if (status === 'loading') {
+    return null;
+  }
+  if (status === 'unauthenticated') {
+    router.push('/login');
+    return null;
+  }
+
   async function handleExport(month: number, year: number) {
     console.log("Exporting data for month:", month, "year:", year);
     // Fetch sales data for the selected month and year
@@ -113,6 +128,8 @@ export default function SalesPage() {
   const currentDate = new Date();
   const currentYear = currentDate.getFullYear();
   const years = [currentYear, currentYear - 1, currentYear - 2];
+
+
 
   return (
     <div className="flex h-screen bg-gray-100">

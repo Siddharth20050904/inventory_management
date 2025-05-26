@@ -16,6 +16,9 @@ import { getOrders, createOrder, updateOrderStatus, updateOrder } from '../../..
 import { getCustomers } from '../../../server_actions/handleCustomers';
 import { getProducts } from '../../../server_actions/handleGodown';
 
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
+
 export default function OrdersPage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isAddingOrder, setIsAddingOrder] = useState(false);
@@ -283,6 +286,18 @@ const toggleOrderDetails = (orderId: string) => {
       setIsAddingOrder(true);
     }
   };
+
+  const { status } = useSession();
+  const router = useRouter();
+  // Don't render anything while checking authentication status
+  if (status === 'loading') {
+    return null;
+  }
+  // Render the page if authenticated
+  if (status === 'unauthenticated') {
+    router.push('/login');
+    return null;
+  }
 
   return (
     <div className="flex h-screen bg-gray-100">
