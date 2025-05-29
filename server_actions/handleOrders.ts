@@ -4,6 +4,15 @@
 import prisma from '../lib/prisma';
 import { sendOrderConfirmationEmail } from './mailing';
 
+export async function getOrdersList({ limit = 10, offset = 0 } = {}) {
+  return prisma.order.findMany({
+    skip: offset,
+    take: limit,
+    orderBy: { createdAt: 'desc' },
+    include: { items: true },
+  });
+}
+
 export async function getOrders() {
   try {
     const orders = await prisma.order.findMany({
@@ -47,6 +56,7 @@ interface Order {
   paymentStatus?: string; // e.g., "Paid", "Unpaid"
   createdAt: Date;
   updatedAt: Date;
+  broughtBy: string;
 }
 
 export async function createOrder(orderData: Order & { items: { productId: string; quantity: number; price: number; productName: string }[] }) {
@@ -71,6 +81,7 @@ export async function createOrder(orderData: Order & { items: { productId: strin
         paymentStatus: orderData.paymentStatus,
         status: orderData.status,
         totalCost: orderData.totalCost,
+        broughtBy: orderData.broughtBy,
       },
     });
     // Send confirmation email
@@ -160,6 +171,7 @@ export async function updateOrder(orderId: string, orderData: Order & { items: {
             product: { connect: { id: item.productId } },
           })),
         },
+        broughtBy: orderData.broughtBy,
       },
     });
 

@@ -4,7 +4,8 @@ import React from 'react';
 import { useState } from 'react';
 import { 
   LayoutDashboard, Users, FileText, ShoppingCart, 
-  Package, Search, Plus, Edit, Trash2, X, TrendingUp
+  Package, Search, Plus, Edit, Trash2, X, TrendingUp,
+  ChevronLeft, ChevronRight
 } from 'lucide-react';
 import Sidebar from '../../components/sidebar';
 
@@ -33,6 +34,11 @@ export default function CustomersPage() {
     address: string;
   } | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  
   const router = useRouter();
   const { status } = useSession();
   
@@ -57,8 +63,6 @@ export default function CustomersPage() {
     { name: "Godown", href: "/godown", icon: <Package size={20} /> },
     { name: "Sales", href: "/sales", icon: <TrendingUp size={20} /> },
   ];
-
-  
 
   const fetchCustomers = async () => {
     const customersData = await getCustomers();
@@ -99,6 +103,7 @@ export default function CustomersPage() {
     setSelectedCustomer(customer);
     setIsAddModalOpen(true);
   };  
+  
   const openDeleteModal = (customer: { id: string; name: string; email: string; phone: string; address: string;}) => {
     setSelectedCustomer(customer);
     setIsDeleteModalOpen(true);
@@ -114,6 +119,7 @@ export default function CustomersPage() {
     const { name, value } = e.target;
     setFormData(prev => ({...prev, [name]: value}));
   };
+  
   const handleSubmit = async () => {
     if (selectedCustomer) {
       // Edit existing customer
@@ -167,14 +173,81 @@ export default function CustomersPage() {
     closeModals();
   };
 
+  // Filter customers based on search
   const filteredCustomers = customers.filter(customer => 
     customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     customer.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     customer.phone?.includes(searchTerm)
   );
 
+  // Pagination calculations
+  const totalItems = filteredCustomers.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentCustomers = filteredCustomers.slice(startIndex, endIndex);
+
+  // Handle page changes
+  const goToPage = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const goToPreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  const goToNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+
+  // Handle items per page change
+  const handleItemsPerPageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setItemsPerPage(Number(e.target.value));
+    setCurrentPage(1); // Reset to first page
+  };
+
+  // Generate page numbers for pagination
+  const getPageNumbers = () => {
+    const pages = [];
+    const maxVisiblePages = 5;
+    
+    if (totalPages <= maxVisiblePages) {
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      if (currentPage <= 3) {
+        for (let i = 1; i <= 4; i++) {
+          pages.push(i);
+        }
+        pages.push('...');
+        pages.push(totalPages);
+      } else if (currentPage >= totalPages - 2) {
+        pages.push(1);
+        pages.push('...');
+        for (let i = totalPages - 3; i <= totalPages; i++) {
+          pages.push(i);
+        }
+      } else {
+        pages.push(1);
+        pages.push('...');
+        for (let i = currentPage - 1; i <= currentPage + 1; i++) {
+          pages.push(i);
+        }
+        pages.push('...');
+        pages.push(totalPages);
+      }
+    }
+    
+    return pages;
+  };
+
   return (
-    <div className="flex h-screen bg-gray-100">
+    <div className="flex h-screen text-black bg-gray-100">
       <Sidebar
         isSidebarOpen={isSidebarOpen}
         toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -194,15 +267,31 @@ export default function CustomersPage() {
         <main className="flex-1 overflow-y-auto p-6">
           {/* Actions Bar */}
           <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center bg-white rounded-md w-64 shadow">
-              <Search size={18} className="ml-3 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search customers..."
-                className="bg-transparent border-none py-2 px-3 focus:outline-none w-full"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center bg-white rounded-md w-64 shadow">
+                <Search size={18} className="ml-3 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search customers..."
+                  className="bg-transparent border-none py-2 px-3 focus:outline-none w-full"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              <div className="flex items-center space-x-2">
+                <label className="text-sm text-gray-600">Show:</label>
+                <select
+                  value={itemsPerPage}
+                  onChange={handleItemsPerPageChange}
+                  className="bg-white border border-gray-300 rounded-md px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value={5}>5</option>
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                </select>
+                <span className="text-sm text-gray-600">per page</span>
+              </div>
             </div>
             <button 
               onClick={openAddModal}
@@ -227,8 +316,8 @@ export default function CustomersPage() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredCustomers.length > 0 ? (
-                    filteredCustomers.map((customer) => (
+                  {currentCustomers.length > 0 ? (
+                    currentCustomers.map((customer) => (
                       <tr key={customer.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-gray-900">{customer.name}</div>
@@ -279,6 +368,67 @@ export default function CustomersPage() {
                 </tbody>
               </table>
             </div>
+            
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="bg-white px-4 py-3 border-t border-gray-200 sm:px-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center text-sm text-gray-700">
+                    <span>
+                      Showing {startIndex + 1} to {Math.min(endIndex, totalItems)} of {totalItems} results
+                    </span>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2">
+                    {/* Previous button */}
+                    <button
+                      onClick={goToPreviousPage}
+                      disabled={currentPage === 1}
+                      className={`relative inline-flex items-center px-2 py-2 rounded-md text-sm font-medium ${
+                        currentPage === 1
+                          ? 'text-gray-300 cursor-not-allowed'
+                          : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      <ChevronLeft size={16} />
+                    </button>
+                    
+                    {/* Page numbers */}
+                    <div className="flex items-center space-x-1">
+                      {getPageNumbers().map((page, index) => (
+                        <button
+                          key={index}
+                          onClick={() => typeof page === 'number' ? goToPage(page) : null}
+                          disabled={page === '...'}
+                          className={`relative inline-flex items-center px-3 py-2 text-sm font-medium rounded-md ${
+                            page === currentPage
+                              ? 'bg-blue-600 text-white'
+                              : page === '...'
+                              ? 'text-gray-300 cursor-default'
+                              : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50'
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      ))}
+                    </div>
+                    
+                    {/* Next button */}
+                    <button
+                      onClick={goToNextPage}
+                      disabled={currentPage === totalPages}
+                      className={`relative inline-flex items-center px-2 py-2 rounded-md text-sm font-medium ${
+                        currentPage === totalPages
+                          ? 'text-gray-300 cursor-not-allowed'
+                          : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      <ChevronRight size={16} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </main>
       </div>

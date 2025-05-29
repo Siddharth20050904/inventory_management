@@ -28,7 +28,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isSidebarOpen, toggleSidebar, navigat
     return null;
   }
   return (
-    <div className={`${isSidebarOpen ? 'w-64' : 'w-20'} bg-gray-900 text-white transition-all duration-300 ease-in-out`}>
+    <div className={`${isSidebarOpen ? 'w-64' : 'w-20'} bg-gray-900 text-white transition-all duration-300 ease-in-out h-screen relative`}>
       <div className="flex items-center justify-between p-4 border-b border-gray-800">
         {isSidebarOpen && <h1 className="text-xl font-bold">Inventory Pro</h1>}
         <button onClick={toggleSidebar} className="p-1 rounded-md hover:bg-gray-800">
@@ -38,7 +38,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isSidebarOpen, toggleSidebar, navigat
       <nav className="mt-5">
         <ul>
           {navigationItems.map((item, index) => (
-            <li key={item.name || index}> {/* Ensure the key is unique */}
+            <li key={item.name || index}>
               <a
                 href={item.href}
                 className="flex items-center px-4 py-3 text-gray-300 hover:bg-gray-800 hover:text-white transition-colors"
@@ -50,7 +50,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isSidebarOpen, toggleSidebar, navigat
           ))}
         </ul>
       </nav>
-      <div className="absolute bottom-0 w-full p-4">
+      <div className="absolute bottom-0 left-0 w-full p-4 h-16">
         <a
           href="/logout"
           className="flex items-center text-gray-300 hover:text-white transition-colors"

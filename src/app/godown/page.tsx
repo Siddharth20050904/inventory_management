@@ -4,7 +4,8 @@ import {
   LayoutDashboard, Users, FileText, ShoppingCart, 
   Package, Bell, Search, 
   Plus, Trash2, Save, Edit, RefreshCw,
-  ChevronDown, ChevronUp, TrendingUp
+  ChevronDown, ChevronUp, TrendingUp,
+  ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight
 } from 'lucide-react';
 import Sidebar from '@/components/sidebar';
 import { getProducts, addProduct, updateProduct, deleteProduct } from '../../../server_actions/handleGodown';
@@ -19,6 +20,7 @@ export default function GodownPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortConfig, setSortConfig] = useState<{ key: keyof typeof initialProductForm; direction: 'asc' | 'desc' }>({ key: 'name', direction: 'asc' });
   const [editProductId, setEditProductId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   const initialProductForm = {
     name: '',
@@ -31,6 +33,12 @@ export default function GodownPage() {
   // Sample data for products
   const initialProducts: Product[] = [];
   const [products, setProducts] = useState(initialProducts);
+
+  // Pagination states
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
+  const [hasMore, setHasMore] = useState(false);
+  const [totalProducts, setTotalProducts] = useState(0);
 
   const navigationItems = [
     { name: "Dashboard", href: "/dashboard", icon: <LayoutDashboard size={20} /> },
@@ -88,7 +96,7 @@ export default function GodownPage() {
   };
 
   const handleSubmitProduct = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault(); // Prevent the default form submission behavior
+    e.preventDefault();
     
     const formattedProduct = {
       ...productForm,
@@ -114,7 +122,7 @@ export default function GodownPage() {
               ...product, 
               ...updatedProduct, 
               lastUpdated: updatedProduct.lastUpdated.toISOString(),
-              description: updatedProduct.description ?? '' // Ensure description is always a string
+              description: updatedProduct.description ?? ''
             }
           : product
       );
@@ -132,12 +140,25 @@ export default function GodownPage() {
       formData.append("lastUpdated", formattedProduct.lastUpdated);
 
       const newProduct = await addProduct(formData);
-      setProducts([...products, { ...newProduct, id: newProduct.id, lastUpdated: newProduct.lastUpdated.toISOString(), description: newProduct.description ?? '' }]);
+
+      if(newProduct) {
+        setProducts([
+          ...products, 
+          {
+            ...newProduct,
+            lastUpdated: newProduct.lastUpdated instanceof Date
+              ? newProduct.lastUpdated.toISOString()
+              : newProduct.lastUpdated,
+            description: newProduct.description ?? ''
+          }
+        ]);
+      }
+      // Refresh the current page to show the new product
+      await getProductsData(page);
       setIsAddingProduct(false);
       setProductForm(initialProductForm);
       setIsEditingProduct(false);
       setEditProductId(null);
-      setIsAddingProduct(false);
     }
     
     setProductForm(initialProductForm);
@@ -146,8 +167,9 @@ export default function GodownPage() {
 
   const handleDeleteProduct = async (productId: string) => {
     if (window.confirm('Are you sure you want to delete this product?')) {
-      const deletedProduct = await deleteProduct(productId);
-      setProducts(products.filter(product => product.id != deletedProduct.id));
+      await deleteProduct(productId);
+      // Refresh current page after deletion
+      await getProductsData(page);
     }
   };
   
@@ -159,23 +181,77 @@ export default function GodownPage() {
   const displayedProducts = getSortedAndFilteredProducts();
 
   const inventoryStats = {
-    totalProducts: products.length,
+    totalProducts: totalProducts,
     totalValue: products.reduce((sum, product) => sum + (product.price * product.quantity), 0).toFixed(2),
   };
 
-  const getProductsData = async () => {
-    const productsData = await getProducts();
-    setProducts(productsData.map(product => ({
-      ...product,
-      id: product.id, // Convert id to number
-      lastUpdated: product.lastUpdated.toISOString(), // Convert Date to string
-      description: product.description ?? '', // Provide default value for description
-    })));
+  const getProductsData = async (pageNum = 1) => {
+    setIsLoading(true);
+    try {
+      // Fetch one extra to check if there are more pages
+      const productsData = await getProducts({
+        limit: pageSize + 1,
+        offset: (pageNum - 1) * pageSize,
+      });
+      
+      const hasMoreRecords = productsData.length > pageSize;
+      const actualProducts = hasMoreRecords ? productsData.slice(0, pageSize) : productsData;
+      
+      setProducts(actualProducts.map(product => ({
+        ...product,
+        id: product.id,
+        lastUpdated: product.lastUpdated.toISOString(),
+        description: product.description ?? '',
+      })));
+      
+      setHasMore(hasMoreRecords);
+      
+      // Calculate total products (this might need to be adjusted based on your API)
+      // You might want to add a separate API call to get total count
+      setTotalProducts((pageNum - 1) * pageSize + actualProducts.length + (hasMoreRecords ? 1 : 0));
+    } catch (error) {
+      console.error('Error fetching products:', error);
+    } finally {
+      setIsLoading(false);
+    }
   }
 
+  // Pagination handlers
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+  };
+
+  const handlePreviousPage = () => {
+    if (page > 1) {
+      setPage(page - 1);
+    }
+  };
+
+  const handleNextPage = () => {
+    if (hasMore) {
+      setPage(page + 1);
+    }
+  };
+
+  const handleFirstPage = () => {
+    setPage(1);
+  };
+
+  const handleLastPage = () => {
+    // This is an approximation since we don't know the exact last page
+    // You might want to implement a total count API to get the exact last page
+    if (hasMore) {
+      setPage(page + 1);
+    }
+  };
+
+  // Calculate pagination info
+  const startItem = (page - 1) * pageSize + 1;
+  const endItem = Math.min(page * pageSize, (page - 1) * pageSize + products.length);
+
   useEffect(() => {
-    getProductsData();
-  }, []);
+    getProductsData(page);
+  }, [page]);
 
   const { status } = useSession();
   const router = useRouter();
@@ -357,56 +433,157 @@ export default function GodownPage() {
 
           {/* Product Table */}
           <div className="bg-white text-black rounded-lg shadow overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-4 py-2 cursor-pointer" onClick={() => requestSort('name')}>
-                    Name {sortConfig.key === 'name' && (sortConfig.direction === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}
-                  </th>
-                  <th className="px-4 py-2 cursor-pointer" onClick={() => requestSort('price')}>
-                    Price {sortConfig.key === 'price' && (sortConfig.direction === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}
-                  </th>
-                  <th className="px-4 py-2 cursor-pointer" onClick={() => requestSort('quantity')}>
-                    Qty {sortConfig.key === 'quantity' && (sortConfig.direction === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}
-                  </th>
-                  <th className="px-4 py-2">Last Updated</th>
-                  <th className="px-4 py-2">Description</th>
-                  <th className="px-4 py-2">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {displayedProducts.length === 0 && (
+            {isLoading && (
+              <div className="flex justify-center items-center py-8">
+                <RefreshCw size={24} className="animate-spin text-blue-500" />
+                <span className="ml-2 text-gray-600">Loading products...</span>
+              </div>
+            )}
+            
+            {!isLoading && (
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
                   <tr>
-                    <td colSpan={7} className="px-4 py-4 text-center text-gray-500">No products found.</td>
+                    <th className="px-4 py-2 cursor-pointer" onClick={() => requestSort('name')}>
+                      Name {sortConfig.key === 'name' && (sortConfig.direction === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}
+                    </th>
+                    <th className="px-4 py-2 cursor-pointer" onClick={() => requestSort('price')}>
+                      Price {sortConfig.key === 'price' && (sortConfig.direction === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}
+                    </th>
+                    <th className="px-4 py-2 cursor-pointer" onClick={() => requestSort('quantity')}>
+                      Qty {sortConfig.key === 'quantity' && (sortConfig.direction === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}
+                    </th>
+                    <th className="px-4 py-2">Last Updated</th>
+                    <th className="px-4 py-2">Description</th>
+                    <th className="px-4 py-2">Actions</th>
                   </tr>
-                )}
-                {displayedProducts.map(product => (
-                  <tr key={product.id} className='text-center'>
-                    <td className="px-4 py-2 font-medium text-gray-900">{product.name}</td>
-                    <td className="px-4 py-2">₹{product.price.toFixed(2)}</td>
-                    <td className="px-4 py-2">{product.quantity}</td>
-                    <td className="px-4 py-2">{product.lastUpdated}</td>
-                    <td className="px-4 py-2 truncate max-w-xs">{product.description}</td>
-                    <td className="px-4 py-2 space-x-2">
+                </thead>
+                <tbody>
+                  {displayedProducts.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="px-4 py-4 text-center text-gray-500">No products found.</td>
+                    </tr>
+                  )}
+                  {displayedProducts.map(product => (
+                    <tr key={product.id} className='text-center'>
+                      <td className="px-4 py-2 font-medium text-gray-900">{product.name}</td>
+                      <td className="px-4 py-2">₹{product.price.toFixed(2)}</td>
+                      <td className="px-4 py-2">{product.quantity}</td>
+                      <td className="px-4 py-2">{product.lastUpdated}</td>
+                      <td className="px-4 py-2 truncate max-w-xs">{product.description}</td>
+                      <td className="px-4 py-2 space-x-2">
+                        <button
+                          className="text-blue-600 hover:text-blue-900"
+                          onClick={() => handleEditProduct(product)}
+                          title="Edit"
+                        >
+                          <Edit size={16} />
+                        </button>
+                        <button
+                          className="text-red-600 hover:text-red-900"
+                          onClick={() => handleDeleteProduct(product.id)}
+                          title="Delete"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+
+            {/* Pagination Controls */}
+            {!isLoading && products.length > 0 && (
+              <div className="bg-white px-4 py-3 border-t border-gray-200 sm:px-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center text-sm text-gray-700">
+                    <span>
+                      Showing <span className="font-medium">{startItem}</span> to{' '}
+                      <span className="font-medium">{endItem}</span> of{' '}
+                      <span className="font-medium">{totalProducts}+</span> results
+                    </span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    {/* First Page Button */}
+                    <button
+                      onClick={handleFirstPage}
+                      disabled={page === 1}
+                      className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <ChevronsLeft size={16} />
+                    </button>
+                    
+                    {/* Previous Page Button */}
+                    <button
+                      onClick={handlePreviousPage}
+                      disabled={page === 1}
+                      className="relative inline-flex items-center px-2 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <ChevronLeft size={16} />
+                    </button>
+
+                    {/* Page Numbers */}
+                    <div className="flex items-center space-x-1">
+                      {/* Show current page and nearby pages */}
+                      {page > 2 && (
+                        <>
+                          <button
+                            onClick={() => handlePageChange(1)}
+                            className="relative inline-flex items-center px-3 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
+                          >
+                            1
+                          </button>
+                          {page > 3 && <span className="px-2 text-gray-500">...</span>}
+                        </>
+                      )}
+                      
+                      {page > 1 && (
+                        <button
+                          onClick={() => handlePageChange(page - 1)}
+                          className="relative inline-flex items-center px-3 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
+                        >
+                          {page - 1}
+                        </button>
+                      )}
+                      
                       <button
-                        className="text-blue-600 hover:text-blue-900"
-                        onClick={() => handleEditProduct(product)}
-                        title="Edit"
+                        className="relative inline-flex items-center px-3 py-2 border border-blue-500 bg-blue-50 text-sm font-medium text-blue-600"
                       >
-                        <Edit size={16} />
+                        {page}
                       </button>
-                      <button
-                        className="text-red-600 hover:text-red-900"
-                        onClick={() => handleDeleteProduct(product.id)}
-                        title="Delete"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                      
+                      {hasMore && (
+                        <button
+                          onClick={() => handlePageChange(page + 1)}
+                          className="relative inline-flex items-center px-3 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
+                        >
+                          {page + 1}
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Next Page Button */}
+                    <button
+                      onClick={handleNextPage}
+                      disabled={!hasMore}
+                      className="relative inline-flex items-center px-2 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <ChevronRight size={16} />
+                    </button>
+
+                    {/* Last Page Button (approximation) */}
+                    <button
+                      onClick={handleLastPage}
+                      disabled={!hasMore}
+                      className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <ChevronsRight size={16} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </main>
       </div>

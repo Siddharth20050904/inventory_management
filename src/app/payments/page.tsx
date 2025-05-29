@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import Sidebar from '@/components/sidebar';
 
-import { getOrders, updateOrderPaymentStatus } from '../../../server_actions/handleOrders';
+import { updateOrderPaymentStatus, getOrdersList } from '../../../server_actions/handleOrders';
 
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
@@ -93,10 +93,24 @@ export default function PendingPaymentsPage() {
     return matchesSearchTerm && matchesStatus;
   });
 
-  const getOrdersList = async () => {
+  // Fixed pagination state
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
+  const [hasMore, setHasMore] = useState(false);
+
+  // Fixed pagination function - Alternative approach (fetch one extra record)
+  const getOrdersListFunc = async (pageNum: number) => {
     try {
-      const orders = await getOrders();
-      const paymentsData = orders.map((order) => ({
+      // Fetch one extra record to check if there are more pages
+      const orders = await getOrdersList({ 
+        limit: pageSize + 1, 
+        offset: (pageNum - 1) * pageSize 
+      });
+      
+      const hasMoreRecords = orders.length > pageSize;
+      const actualOrders = hasMoreRecords ? orders.slice(0, pageSize) : orders;
+      
+      const paymentsData = actualOrders.map((order) => ({
         id: order.id,
         customer: order.customerName,
         amount: order.totalCost.toString(),
@@ -111,14 +125,17 @@ export default function PendingPaymentsPage() {
           price: item.price,
         })),
       }));
-      setPayments([...paymentsData]);
+      
+      setPayments(paymentsData);
+      setHasMore(hasMoreRecords);
     } catch (error) {
       console.error('Error fetching orders:', error);
     }
   };
+
   useEffect(() => {
-    getOrdersList();
-  }, []);
+    getOrdersListFunc(page);
+  }, [page]);
 
   const { status } = useSession();
   const router = useRouter();
@@ -133,7 +150,7 @@ export default function PendingPaymentsPage() {
   }
 
   return (
-    <div className="flex h-screen bg-gray-100">
+    <div className="flex h-screen bg-gray-100 text-black">
       {/* Side Navigation */}
       {/* Sidebar */}
       <Sidebar
@@ -176,7 +193,7 @@ export default function PendingPaymentsPage() {
                   <ChevronDown size={16} className="ml-1 text-gray-500" />
                 </button>
                 {isFilterOpen && (
-                  <div className="absolute mt-2 w-48 bg-white rounded-md shadow-lg z-10">
+                  <div className="absolute mt-2 w-48 text-black bg-white rounded-md shadow-lg z-10">
                     <ul className="py-1">
                       <li>
                         <button
@@ -188,18 +205,18 @@ export default function PendingPaymentsPage() {
                       </li>
                       <li>
                         <button
-                          onClick={() => { setFilterStatus('pending'); setIsFilterOpen(false); }}
-                          className={`block px-4 py-2 text-sm w-full text-left hover:bg-gray-100 ${filterStatus === 'pending' ? 'bg-gray-100' : ''}`}
+                          onClick={() => { setFilterStatus('unpaid'); setIsFilterOpen(false); }}
+                          className={`block px-4 py-2 text-sm w-full text-left hover:bg-gray-100 ${filterStatus === 'unpaid' ? 'bg-gray-100' : ''}`}
                         >
                           Pending
                         </button>
                       </li>
                       <li>
                         <button
-                          onClick={() => { setFilterStatus('overdue'); setIsFilterOpen(false); }}
-                          className={`block px-4 py-2 text-sm w-full text-left hover:bg-gray-100 ${filterStatus === 'overdue' ? 'bg-gray-100' : ''}`}
+                          onClick={() => { setFilterStatus('paid'); setIsFilterOpen(false); }}
+                          className={`block px-4 py-2 text-sm w-full text-left hover:bg-gray-100 ${filterStatus === 'paid' ? 'bg-gray-100' : ''}`}
                         >
-                          Overdue
+                          Paid
                         </button>
                       </li>
                     </ul>
@@ -352,6 +369,43 @@ export default function PendingPaymentsPage() {
               </p>
             </div>
           )}
+
+          {/* Fixed Pagination Controls */}
+          <div className="flex justify-between items-center mt-6 px-4">
+            <div className="text-sm text-gray-600">
+              Page {page}
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => setPage(1)}
+                disabled={page === 1}
+                className="px-3 py-2 bg-gray-200 rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-300"
+              >
+                First
+              </button>
+              
+              <button
+                onClick={() => setPage(page - 1)}
+                disabled={page === 1}
+                className="px-4 py-2 bg-gray-200 rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-300"
+              >
+                Previous
+              </button>
+              
+              <span className="px-4 py-2 bg-gray-100 rounded font-medium">
+                {page}
+              </span>
+              
+              <button
+                onClick={() => setPage(page + 1)}
+                disabled={!hasMore}
+                className="px-4 py-2 bg-gray-200 rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-300"
+              >
+                Next
+              </button>
+            </div>
+          </div>
         </main>
       </div>
 

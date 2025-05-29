@@ -2,8 +2,14 @@
 
 import prisma from "../lib/prisma";
 
-export async function getProducts() {
-    const products = await prisma.product.findMany({});
+export async function getProducts({ limit = 10, offset = 0 } = {}) {
+    const products = await prisma.product.findMany({
+        skip: offset,
+        take: limit,
+        orderBy: {
+            lastUpdated: "desc",
+        },
+    });
     return products;
 }
 

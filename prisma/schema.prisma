@@ -39,6 +39,7 @@ model Order {
   paymentStatus String?      @default("Unpaid")// e.g., Paid, Unpaid
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
+  broughtBy     String?      // Name of the person who brought the order
 }
 
 model OrderItem {

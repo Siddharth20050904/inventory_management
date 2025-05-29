@@ -12,7 +12,7 @@ import {
 import React from 'react';
 import { Customer, Order, Product } from '@prisma/client';
 
-import { getOrders, createOrder, updateOrderStatus, updateOrder } from '../../../server_actions/handleOrders';
+import { getOrdersList, createOrder, updateOrderStatus, updateOrder } from '../../../server_actions/handleOrders';
 import { getCustomers } from '../../../server_actions/handleCustomers';
 import { getProducts } from '../../../server_actions/handleGodown';
 
@@ -32,6 +32,7 @@ export default function OrdersPage() {
     deliveryDate: '',
     paymentDueDate: '',
     paymentStatus: 'Unpaid',
+    broughtBy: '',
   });
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
@@ -47,6 +48,10 @@ export default function OrdersPage() {
   
   // Sample product data
   const [productList, setProductList] = useState(Product); // Flatten the array to use it directly
+
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
+  const [hasMore, setHasMore] = useState(false);
 
   // Navigation items
   const navigationItems = [
@@ -78,10 +83,19 @@ export default function OrdersPage() {
     }
   }
 
-  const getOrdersList = async () => {
+  const getOrdersListFunc = async (pageNum = 1) => {
     try {
-      const orders = await getOrders();
-      setOrders(orders);
+      // Fetch one extra record to check if there are more pages
+      const orders = await getOrdersList({
+        limit: pageSize + 1,
+        offset: (pageNum - 1) * pageSize,
+      });
+
+      const hasMoreRecords = orders.length > pageSize;
+      const actualOrders = hasMoreRecords ? orders.slice(0, pageSize) : orders;
+
+      setOrders(actualOrders);
+      setHasMore(hasMoreRecords);
     } catch (error) {
       console.error('Error fetching orders:', error);
     }
@@ -90,8 +104,8 @@ export default function OrdersPage() {
   useEffect(() =>{
     getCustomersList();
     getProductsList();
-    getOrdersList();
-  }, []);
+    getOrdersListFunc(page);
+  }, [page]);
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -165,6 +179,7 @@ const handleSubmitOrder = async () => {
         productId: item.productId,
         orderId: selectedOrderId || '',
       })),
+      broughtBy: orderForm.broughtBy,
     });
 
     setOrders((prevOrders) =>
@@ -183,6 +198,7 @@ const handleSubmitOrder = async () => {
     deliveryDate: "",
     paymentDueDate: "",
     paymentStatus: "Unpaid",
+    broughtBy: "",
     });
     setEditModalOpen(false);
     setIsAddingOrder(false);
@@ -217,6 +233,7 @@ const handleSubmitOrder = async () => {
     paymentStatus: "Unpaid",
     createdAt: new Date(),
     updatedAt: new Date(),
+    broughtBy: orderForm.broughtBy,
   };
 
   const addedOrder = await createOrder({ id: newOrderId, ...newOrder });  
@@ -235,6 +252,7 @@ const handleSubmitOrder = async () => {
     deliveryDate: "",
     paymentDueDate: "",
     paymentStatus: "Unpaid",
+    broughtBy: "",
   });
 
   // Close form
@@ -259,8 +277,12 @@ const toggleOrderDetails = (orderId: string) => {
   };
 
   const filteredOrders = orders.filter(order => {
-    return order.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-           order.id.toLowerCase().includes(searchTerm.toLowerCase());
+    const search = searchTerm.toLowerCase();
+    return (
+      order.customerName.toLowerCase().includes(search) ||
+      order.id.toLowerCase().includes(search) ||
+      (order.broughtBy && order.broughtBy.toLowerCase().includes(search))
+    );
   });
 
   const handleEdit = (orderId: string) => {
@@ -281,6 +303,7 @@ const toggleOrderDetails = (orderId: string) => {
         deliveryDate: order.deliveryDate ? order.deliveryDate.toISOString().split('T')[0] : '',
         paymentDueDate: order.paymentDueDate ? order.paymentDueDate.toISOString().split('T')[0] : '',
         paymentStatus: order.paymentStatus || 'Unpaid',
+        broughtBy: order.broughtBy || '',
       });
       setEditModalOpen(true);
       setIsAddingOrder(true);
@@ -299,8 +322,9 @@ const toggleOrderDetails = (orderId: string) => {
     return null;
   }
 
+
   return (
-    <div className="flex h-screen bg-gray-100">
+    <div className="flex text-black h-screen bg-gray-100">
       {/* Sidebar */}
       <Sidebar
         isSidebarOpen={isSidebarOpen}
@@ -414,6 +438,19 @@ const toggleOrderDetails = (orderId: string) => {
                     value={orderForm.paymentDueDate || ''}
                     onChange={(e) => setOrderForm({ ...orderForm, paymentDueDate: e.target.value })}
                   />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Brought By</label>
+                  <select
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    value={orderForm.broughtBy}
+                    onChange={(e) => setOrderForm({ ...orderForm, broughtBy: e.target.value })}
+                    required
+                  >
+                    <option value="">Select</option>
+                    <option value="Sandeep">Sandeep</option>
+                    <option value="Laxman">Laxman</option>
+                  </select>
                 </div>
               </div>
               
@@ -542,6 +579,7 @@ const toggleOrderDetails = (orderId: string) => {
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment Status</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Brought By</th>
                       <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                     </tr>
                   </thead>
@@ -575,6 +613,7 @@ const toggleOrderDetails = (orderId: string) => {
                             </span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{order.totalCost || 'N/A'}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{order.broughtBy}</td>
                           <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium flex justify-end items-center">
                             <a className="text-blue-600 hover:text-blue-900 mr-3">View</a>
                             <a className="text-gray-600 hover:text-gray-900 mr-3" onClick={() => handleEdit(order.id)}>Edit</a>
@@ -615,6 +654,10 @@ const toggleOrderDetails = (orderId: string) => {
                                   <h4 className="font-medium text-gray-700">Total Amount</h4>
                                   <p className="text-gray-500">{order.totalCost}</p>
                                 </div>
+                                <div>
+                                  <h4 className="font-medium text-gray-700">Brought By</h4>
+                                  <p className="text-gray-500">{order.broughtBy}</p>
+                                </div>
                                 </div>
                                 {/* Mark as Delivered Button */}
                                 {order.status !== 'Delivered' && (
@@ -641,6 +684,37 @@ const toggleOrderDetails = (orderId: string) => {
               </div>
             )}
           </div>
+          <div className="flex justify-between items-center mt-6 px-4">
+  <div className="text-sm text-gray-600">
+    Page {page}
+  </div>
+  <div className="flex items-center space-x-2">
+    <button
+      onClick={() => setPage(1)}
+      disabled={page === 1}
+      className="px-3 py-2 bg-gray-200 rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-300"
+    >
+      First
+    </button>
+    <button
+      onClick={() => setPage(page - 1)}
+      disabled={page === 1}
+      className="px-4 py-2 bg-gray-200 rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-300"
+    >
+      Previous
+    </button>
+    <span className="px-4 py-2 bg-gray-100 rounded font-medium">
+      {page}
+    </span>
+    <button
+      onClick={() => setPage(page + 1)}
+      disabled={!hasMore}
+      className="px-4 py-2 bg-gray-200 rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-300"
+    >
+      Next
+    </button>
+  </div>
+</div>
         </main>
       </div>
     </div>

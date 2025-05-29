@@ -1,14 +1,14 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
+
 "use client";
 
 import { useEffect, useState } from 'react';
 import { 
   LayoutDashboard, Users, FileText, ShoppingCart, 
   Package, Bell, Search, 
-  ChevronDown, ArrowUpRight, ArrowDownRight,
+  ChevronDown,
   DollarSign, TrendingUp, Wallet, Download
 } from 'lucide-react';
-import { Line, Bar } from 'recharts';
+import { Line } from 'recharts';
 import Sidebar from '@/components/sidebar';
 import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
@@ -39,14 +39,6 @@ export default function SalesPage() {
     monthly: { name: string; sales: number; profit: number}[];
     daily: { name: string; sales: number; profit: number}[];
   }>();
-  // Product performance data
-  const productPerformance = [
-    { id: 1, name: "Wireless Headphones", sales: 245, revenue: 31850, growth: 12.5 },
-    { id: 2, name: "Phone Case", sales: 412, revenue: 10300, growth: 8.3 },
-    { id: 3, name: "Gaming Monitor", sales: 98, revenue: 88199, growth: 15.7 },
-    { id: 4, name: "Keyboard", sales: 156, revenue: 31198, growth: -3.2 },
-    { id: 5, name: "Mouse", sales: 187, revenue: 16828, growth: 5.4 },
-  ];
 
   // Calculate sales statistics
   const currentData = salesData ? salesData[timeRange] : [];
@@ -103,7 +95,7 @@ export default function SalesPage() {
 
     // Add header row
     worksheet.addRow([
-      "Order ID", "Customer Name", "Date", "Product", "Quantity", "Price", "Total"
+      "Order ID", "Customer Name", "Date", "Brought By", "Product", "Quantity", "Price", "Total"
     ]);
 
     // Add data rows
@@ -113,6 +105,7 @@ export default function SalesPage() {
           order.id,
           order.customerName,
           new Date(order.createdAt).toLocaleDateString(),
+          order.broughtBy,
           item.productName,
           item.quantity,
           item.price,
@@ -274,42 +267,6 @@ export default function SalesPage() {
             <h3 className="text-lg font-semibold text-gray-800 mb-4">Sales, Profit & Loss Analysis</h3>
             <div className="h-80">
               <SalesChart data={salesData ? salesData[timeRange] : []} />
-            </div>
-          </div>
-
-          {/* Top Products Table */}
-          <div className="bg-white text-black rounded-lg shadow">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-800">Top Performing Products</h3>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sales Count</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Revenue</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Growth</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {productPerformance.map((product) => (
-                    <tr key={product.id}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{product.name}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{product.sales} units</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">₹{product.revenue.toLocaleString()}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          product.growth >= 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                        }`}>
-                          {product.growth >= 0 ? <ArrowUpRight size={12} className="mr-1" /> : <ArrowDownRight size={12} className="mr-1" />}
-                          {Math.abs(product.growth)}%
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
             </div>
           </div>
         </main>
