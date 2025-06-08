@@ -199,7 +199,7 @@ export default function DashboardLayout() {
                       {expandedOrder === order.id && (
                         <tr>
                           <td colSpan={5} className="px-6 py-4 bg-gray-50">
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                               <div>
                                 <h4 className="font-medium text-gray-700">Contact Number</h4>
                                 <p className="text-gray-500">{order.contactNumber}</p>

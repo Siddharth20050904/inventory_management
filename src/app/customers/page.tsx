@@ -267,7 +267,7 @@ export default function CustomersPage() {
         <main className="flex-1 overflow-y-auto p-6">
           {/* Actions Bar */}
           <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center space-x-4">
+            <div className="flex flex-col sm:flex-row items-center space-x-2 space-y-2">
               <div className="flex items-center bg-white rounded-md w-64 shadow">
                 <Search size={18} className="ml-3 text-gray-400" />
                 <input
@@ -278,28 +278,32 @@ export default function CustomersPage() {
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
-              <div className="flex items-center space-x-2">
-                <label className="text-sm text-gray-600">Show:</label>
-                <select
-                  value={itemsPerPage}
-                  onChange={handleItemsPerPageChange}
-                  className="bg-white border border-gray-300 rounded-md px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              <div className="flex flex-row items-center space-x-4">
+                <div className="flex items-center space-x-2">
+                  <label className="text-sm text-gray-600">Show:</label>
+                  <select
+                    value={itemsPerPage}
+                    onChange={handleItemsPerPageChange}
+                    className="bg-white border border-gray-300 rounded-md px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value={5}>5</option>
+                    <option value={10}>10</option>
+                    <option value={25}>25</option>
+                    <option value={50}>50</option>
+                  </select>
+                  <span className="text-sm text-gray-600">per page</span>
+                </div>
+              </div>
+              <div className="flex-1">
+                <button 
+                  onClick={openAddModal}
+                  className="flex items-center bg-blue-600 text-white w-30 h-10 px-1 py-2 text-sm ml-5 rounded-md hover:bg-blue-700 transition-colors"
                 >
-                  <option value={5}>5</option>
-                  <option value={10}>10</option>
-                  <option value={25}>25</option>
-                  <option value={50}>50</option>
-                </select>
-                <span className="text-sm text-gray-600">per page</span>
+                  <Plus size={18} className="mr-1" />
+                  Add Customer
+                </button>
               </div>
             </div>
-            <button 
-              onClick={openAddModal}
-              className="flex items-center bg-blue-600 text-white w-30 h-10 px-1 py-2 text-sm ml-5 rounded-md hover:bg-blue-700 transition-colors"
-            >
-              <Plus size={18} className="mr-1" />
-              Add Customer
-            </button>
           </div>
           
           {/* Customers Table */}

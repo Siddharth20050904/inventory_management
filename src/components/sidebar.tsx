@@ -28,7 +28,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isSidebarOpen, toggleSidebar, navigat
     return null;
   }
   return (
-    <div className={`${isSidebarOpen ? 'w-64' : 'w-20'} bg-gray-900 text-white transition-all duration-300 ease-in-out h-screen relative`}>
+    <div className={`${isSidebarOpen ? 'w-64' : 'w-15'} bg-gray-900 text-white transition-all duration-300 ease-in-out h-screen relative`}>
       <div className="flex items-center justify-between p-4 border-b border-gray-800">
         {isSidebarOpen && <h1 className="text-xl font-bold">Inventory Pro</h1>}
         <button onClick={toggleSidebar} className="p-1 rounded-md hover:bg-gray-800">
