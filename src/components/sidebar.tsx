@@ -1,6 +1,6 @@
 import { LogOut, Menu, X } from 'lucide-react';
 import React from 'react';
-import { useSession } from 'next-auth/react';
+import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 
 interface SidebarProps {
@@ -52,7 +52,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isSidebarOpen, toggleSidebar, navigat
       </nav>
       <div className="absolute bottom-0 left-0 w-full p-4 h-16">
         <a
-          href="/logout"
+          onClick={() => signOut({ callbackUrl: '/login' })}
           className="flex items-center text-gray-300 hover:text-white transition-colors"
         >
           <LogOut size={20} className="mr-3" />
