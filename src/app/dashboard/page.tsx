@@ -217,14 +217,14 @@ export default function DashboardLayout() {
                                 <ul className="list-disc pl-5">
                                   {order.items?.map((item, idx) => (
                                     <li key={idx} className="text-gray-500">
-                                      {item.productName} - {item.quantity} x ${item.price.toFixed(2)} = ${(item.quantity * item.price).toFixed(2)}
+                                      {item.productName} - {item.quantity} x ₹{item.price.toFixed(2)} = ₹{(item.quantity * item.price).toFixed(2)}
                                     </li>
                                   ))}
                                 </ul>
                               </div>
                               <div>
                                 <h4 className="font-medium text-gray-700">Total Amount</h4>
-                                <p className="text-gray-500">{order.totalCost}</p>
+                                <p className="text-gray-500">₹{order.totalCost}</p>
                               </div>
                             </div>
                           </td>

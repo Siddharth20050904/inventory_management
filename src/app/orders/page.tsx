@@ -14,7 +14,7 @@ import { Customer, Order, Product } from '@prisma/client';
 
 import { getOrdersList, createOrder, updateOrderStatus, updateOrder } from '../../../server_actions/handleOrders';
 import { getCustomers } from '../../../server_actions/handleCustomers';
-import { getProducts } from '../../../server_actions/handleGodown';
+import { getAllProducts } from '../../../server_actions/handleGodown';
 
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
@@ -85,7 +85,7 @@ export default function OrdersPage() {
 
   const getProductsList = async () => {
     try {
-      const products = await getProducts();
+      const products = await getAllProducts();
       setProductList(products);
     } catch (error) {
       console.error('Error fetching products:', error);

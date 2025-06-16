@@ -8,7 +8,7 @@ import {
   ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight
 } from 'lucide-react';
 import Sidebar from '@/components/sidebar';
-import { getProducts, addProduct, updateProduct, deleteProduct } from '../../../server_actions/handleGodown';
+import { getProducts, addProduct, updateProduct, deleteProduct, getTotalInventoryValue, getTotalNumberOfProducts } from '../../../server_actions/handleGodown';
 
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
@@ -39,6 +39,8 @@ export default function GodownPage() {
   const pageSize = 10;
   const [hasMore, setHasMore] = useState(false);
   const [totalProducts, setTotalProducts] = useState(0);
+  const [totalInventoryValue, setTotalInventoryValue] = useState(0);
+  const [totalNumberOfProducts, setTotalNumberOfProducts] = useState(0);
 
   const navigationItems = [
     { name: "Dashboard", href: "/dashboard", icon: <LayoutDashboard size={20} /> },
@@ -58,20 +60,15 @@ export default function GodownPage() {
   };
 
   const getSortedAndFilteredProducts = () => {
-    let filteredProducts = [...products];
-    if (searchTerm) {
-      filteredProducts = filteredProducts.filter(product => 
-        product.name.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
+    const sortedProducts = [...products];
     if (sortConfig.key) {
-      filteredProducts.sort((a, b) => {
+      sortedProducts.sort((a, b) => {
         if (a[sortConfig.key as keyof typeof a] < b[sortConfig.key as keyof typeof b]) return sortConfig.direction === 'asc' ? -1 : 1;
         if (a[sortConfig.key] > b[sortConfig.key]) return sortConfig.direction === 'asc' ? 1 : -1;
         return 0;
       });
     }
-    return filteredProducts;
+    return sortedProducts;
   };
 
   interface Product {
@@ -180,34 +177,27 @@ export default function GodownPage() {
 
   const displayedProducts = getSortedAndFilteredProducts();
 
-  const inventoryStats = {
-    totalProducts: totalProducts,
-    totalValue: products.reduce((sum, product) => sum + (product.price * product.quantity), 0).toFixed(2),
-  };
-
-  const getProductsData = async (pageNum = 1) => {
+  const getProductsData = async (pageNum = 1, search = '') => {
     setIsLoading(true);
     try {
-      // Fetch one extra to check if there are more pages
+      // Pass search term to your backend
       const productsData = await getProducts({
         limit: pageSize + 1,
         offset: (pageNum - 1) * pageSize,
+        search, // <-- add this line
       });
-      
+
       const hasMoreRecords = productsData.length > pageSize;
       const actualProducts = hasMoreRecords ? productsData.slice(0, pageSize) : productsData;
-      
+
       setProducts(actualProducts.map(product => ({
         ...product,
         id: product.id,
         lastUpdated: product.lastUpdated.toISOString(),
         description: product.description ?? '',
       })));
-      
+
       setHasMore(hasMoreRecords);
-      
-      // Calculate total products (this might need to be adjusted based on your API)
-      // You might want to add a separate API call to get total count
       setTotalProducts((pageNum - 1) * pageSize + actualProducts.length + (hasMoreRecords ? 1 : 0));
     } catch (error) {
       console.error('Error fetching products:', error);
@@ -250,8 +240,10 @@ export default function GodownPage() {
   const endItem = Math.min(page * pageSize, (page - 1) * pageSize + products.length);
 
   useEffect(() => {
-    getProductsData(page);
-  }, [page]);
+    getProductsData(page, searchTerm); // Pass searchTerm here
+    getTotalInventoryValue().then(setTotalInventoryValue);
+    getTotalNumberOfProducts().then(setTotalNumberOfProducts);
+  }, [page, searchTerm]);
 
   const { status } = useSession();
   const router = useRouter();
@@ -267,7 +259,7 @@ export default function GodownPage() {
   }
 
   return (
-    <div className="flex h-screen bg-gray-100">
+    <div className="flex h-screen bg-gray-100 text-black">
       {/* Sidebar */}
       <Sidebar
         isSidebarOpen={isSidebarOpen}
@@ -287,7 +279,10 @@ export default function GodownPage() {
                 placeholder="Search products..."
                 className="bg-transparent border-none py-1 px-3 focus:outline-none w-full"
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setPage(1); // <-- Reset to first page on search
+                }}
               />
             </div>
             <div className="flex items-center">
@@ -331,7 +326,7 @@ export default function GodownPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-gray-500">Total Products</p>
-                  <h3 className="text-black text-2xl font-bold mt-1">{inventoryStats.totalProducts}</h3>
+                  <h3 className="text-black text-2xl font-bold mt-1">{totalNumberOfProducts}</h3>
                 </div>
                 <div className="bg-blue-50 p-3 rounded-full">
                   <Package className="h-8 w-8 text-blue-500" />
@@ -343,7 +338,7 @@ export default function GodownPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-gray-500">Inventory Value</p>
-                  <h3 className="text-2xl text-black font-bold mt-1">₹{inventoryStats.totalValue}</h3>
+                  <h3 className="text-2xl text-black font-bold mt-1">₹{totalInventoryValue}</h3>
                 </div>
                 <div className="bg-green-50 p-3 rounded-full">
                   <ShoppingCart className="h-8 w-8 text-green-500" />
