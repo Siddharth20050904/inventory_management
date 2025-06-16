@@ -1,5 +1,4 @@
 "use server";
-
 // Removed OrderItem import as it is not exported from '@prisma/client'
 import prisma from '../lib/prisma';
 import { sendOrderConfirmationEmail } from './mailing';
@@ -61,16 +60,36 @@ interface Order {
 
 export async function createOrder(orderData: Order & { items: { productId: string; quantity: number; price: number; productName: string }[] }) {
   try {
+    // Fetch all products' cost prices in one query
+    const productIds = orderData.items.map(item => item.productId);
+    const products = await prisma.product.findMany({
+      where: { id: { in: productIds } },
+      select: { id: true, price: true },
+    });
+    const productCostMap: Record<string, number> = {};
+    products.forEach(product => {
+      productCostMap[product.id] = product.price;
+    });
+
+    // Calculate total profit for the order
+    const totalProfit = orderData.items.reduce((total, item) => {
+      const salesPrice = Number(item.price);
+      const costPrice = productCostMap[item.productId] ?? 0;
+      const quantity = Number(item.quantity);
+      return total + (salesPrice - costPrice) * quantity;
+    }, 0);
+
     const order = await prisma.order.create({
       data: {
         customerName: orderData.customerName,
         customer: { connect: { id: orderData.customerId } },
         items: {
           create: orderData.items.map((item) => ({
-            quantity: parseInt(item.quantity.toString(), 10),
-            price: parseInt(item.price.toString(), 10),
+            quantity: Number(item.quantity),
+            price: Number(item.price),
             productName: item.productName,
             product: { connect: { id: item.productId } },
+            cost: productCostMap[item.productId] ?? 0,
           })),
         },
         contactNumber: orderData.contactNumber,
@@ -82,6 +101,7 @@ export async function createOrder(orderData: Order & { items: { productId: strin
         status: orderData.status,
         totalCost: orderData.totalCost,
         broughtBy: orderData.broughtBy,
+        profit: totalProfit, // <-- Store profit here
       },
     });
     // Send confirmation email
@@ -138,19 +158,60 @@ export async function createOrder(orderData: Order & { items: { productId: strin
   }
 }
 
-export async function updateOrder(orderId: string, orderData: Order & { items: { productId: string; quantity: number; price: number; productName: string }[] }) {
-  try {
-    // Delete all existing items for the order
-    const orderItems = await prisma.orderItem.findMany({
-      where: { orderId },
-    });
+export async function updateOrder(
+  orderId: string,
+  orderData: Order & { items: { productId: string; quantity: number; price: number; productName: string }[] }
+) {
+  const productIds = orderData.items.map(item => item.productId);
+  const products = await prisma.product.findMany({
+    where: { id: { in: productIds } },
+    select: { id: true, price: true },
+  });
+  const productCostMap: Record<string, number> = {};
+  products.forEach(product => {
+    productCostMap[product.id] = product.price;
+  });
 
+  const totalProfit = orderData.items.reduce((total, item) => {
+    const salesPrice = Number(item.price);
+    const costPrice = productCostMap[item.productId] ?? 0;
+    const quantity = Number(item.quantity);
+    return total + (salesPrice - costPrice) * quantity;
+  }, 0);
+
+  const oldOrderItems = await prisma.orderItem.findMany({
+    where: { orderId },
+  });
+
+  const existingOrder = await prisma.order.findUnique({
+    where: { id: orderId },
+    select: { id: true },
+  });
+  if (!existingOrder) {
+    throw new Error('Order not found');
+  }
+
+  // Track which new items have had inventory decremented
+  const decrementedProducts: { productId: string, quantity: number }[] = [];
+
+  try {
+    // 1. Restore inventory for old items
+    for (const item of oldOrderItems) {
+      await prisma.product.update({
+        where: { id: item.productId },
+        data: {
+          quantity: { increment: parseInt(item.quantity.toString(), 10) },
+        },
+      });
+    }
+
+    // 2. Delete old order items
     await prisma.orderItem.deleteMany({
       where: { orderId },
     });
 
-    // Create new items
-    const order = await prisma.order.update({
+    // 3. Update the order (without items)
+    await prisma.order.update({
       where: { id: orderId },
       data: {
         customerId: orderData.customerId,
@@ -163,72 +224,68 @@ export async function updateOrder(orderId: string, orderData: Order & { items: {
         paymentStatus: orderData.paymentStatus,
         status: orderData.status,
         totalCost: orderData.totalCost,
-        items: {
-          create: orderData.items.map((item) => ({
-            quantity: parseInt(item.quantity.toString(), 10),
-            price: parseInt(item.price.toString(), 10),
-            productName: item.productName,
-            product: { connect: { id: item.productId } },
-          })),
-        },
         broughtBy: orderData.broughtBy,
+        profit: totalProfit,
       },
     });
 
-    // Update product quantities and customer paymentPending
-    for (const item of orderItems) {
-      // Update product quantities
-      await prisma.product.update({
-        where: {
-          id: item.productId, // Match the product by its ID
-        },
+    // 4. Create new order items (separately)
+    for (const item of orderData.items) {
+      await prisma.orderItem.create({
         data: {
-          quantity: {
-            increment: parseInt(item.quantity.toString(), 10), // Increment by the old quantity
-          },
+          orderId: orderId,
+          quantity: Number(item.quantity),
+          price: Number(item.price),
+          productName: item.productName,
+          productId: item.productId,
+          cost: productCostMap[item.productId] ?? 0,
         },
       });
     }
 
+    // 5. Decrement inventory for new items
+    for (const item of orderData.items) {
+      await prisma.product.update({
+        where: { id: item.productId },
+        data: {
+          quantity: { decrement: parseInt(item.quantity.toString(), 10) },
+        },
+      });
+      decrementedProducts.push({ productId: item.productId, quantity: Number(item.quantity) });
+    }
+
+    // 6. Update customer's paymentPending
     const ordersCost = await prisma.order.findMany({
       where: {
         customerId: orderData.customerId,
         paymentStatus: 'Unpaid',
       },
-      select: {
-        totalCost: true,
-      },
+      select: { totalCost: true },
     });
-
     const totalCost = ordersCost.reduce((total, order) => total + order.totalCost, 0);
-
     await prisma.customer.update({
       where: { id: orderData.customerId },
       data: { paymentPending: totalCost },
     });
 
-    return order;
+    return await prisma.order.findUnique({
+      where: { id: orderId },
+      include: { items: true },
+    });
   } catch (error) {
-    console.error('Error updating order:', error);
-    throw new Error('Failed to update order');
-  } finally {
-    try {
-      for (const item of orderData.items) {
+    // Rollback inventory for new items if decremented
+    if (decrementedProducts.length > 0) {
+      for (const item of decrementedProducts) {
         await prisma.product.update({
-          where: {
-            id: item.productId, // Match the product by its ID
-          },
+          where: { id: item.productId },
           data: {
-            quantity: {
-              decrement: parseInt(item.quantity.toString(), 10), // Decrement by the ordered quantity
-            },
+            quantity: { increment: item.quantity },
           },
         });
       }
-    } catch (error) {
-      console.error('Error updating product quantities:', error);
-      throw new Error('Failed to update product quantities');
     }
+    console.error('Error updating order:', error);
+    throw new Error('Failed to update order');
   }
 }
 
@@ -362,23 +419,16 @@ export async function getMonthlySalesAndProfit() {
         },
         paymentStatus: 'Paid',
       },
-      include: {
-        items: {
-          include: {
-            product: true,
-          },
-        },
-      },
+      select:{
+        totalCost: true,
+        profit: true,
+      }
     });
     let totalRevenue = 0;
     let totalProfit = 0;
     for (const order of orders) {
-      for (const item of order.items) {
-        const salePrice = item.price;
-        const costPrice = item.product?.price ?? 0;
-        totalRevenue += salePrice * item.quantity;
-        totalProfit += (salePrice - costPrice) * item.quantity;
-        }
+      totalRevenue += order.totalCost;
+      totalProfit += order.profit ?? 0;
     }
     orderData.push({
       name: startOfMonth.toLocaleString('default', { month: 'long' }),
@@ -405,23 +455,16 @@ export async function getWeeklySalesAndProfit() {
         },
         paymentStatus: 'Paid',
       },
-      include: {
-        items: {
-          include: {
-            product: true,
-          },
-        },
+      select: {
+        totalCost: true,
+        profit: true,
       },
     });
     let totalRevenue = 0;
     let totalProfit = 0;
     for (const order of orders) {
-      for (const item of order.items) {
-        const salePrice = item.price;
-        const costPrice = item.product?.price ?? 0;
-        totalRevenue += salePrice * item.quantity;
-        totalProfit += (salePrice - costPrice) * item.quantity;
-      }
+      totalRevenue += order.totalCost;
+      totalProfit += order.profit ?? 0;
     }
     orderData.push({
       name: startOfDay.toLocaleDateString('default', { month: 'short', day: 'numeric' }),

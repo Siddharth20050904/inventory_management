@@ -95,7 +95,7 @@ export default function SalesPage() {
 
     // Add header row
     worksheet.addRow([
-      "Order ID", "Customer Name", "Date", "Brought By", "Product", "Quantity", "Price", "Total"
+      "Order ID", "Customer Name", "Date", "Brought By", "Product", "Quantity", "Price", "Profit", "Total"
     ]);
 
     // Add data rows
@@ -109,6 +109,7 @@ export default function SalesPage() {
           item.productName,
           item.quantity,
           item.price,
+          (item.price - item.cost) * item.quantity, // Assuming cost is available in item
           item.quantity * item.price
         ]);
       });

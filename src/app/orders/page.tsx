@@ -107,6 +107,10 @@ export default function OrdersPage() {
         offset: (pageNum - 1) * pageSize,
       });
 
+      console.log(orders.map(order => ({
+        id: order.id,
+      })));
+
       const hasMoreRecords = orders.length > pageSize;
       const actualOrders = hasMoreRecords ? orders.slice(0, pageSize) : orders;
 
@@ -177,6 +181,7 @@ export default function OrdersPage() {
 const handleSubmitOrder = async () => {
   // Generate a new order ID
   if(editModalOpen){
+    console.log("Selected Id: ",selectedCustomerId);
     const updatedOrder = await updateOrder(selectedOrderId || '', {
       ...orderForm,
       id: selectedOrderId || '',
@@ -304,6 +309,7 @@ const toggleOrderDetails = (orderId: string) => {
   const handleEdit = (orderId: string) => {
     const order = orders.find((order) => order.id === orderId);
     if (order) {
+      setSelectedOrderId(orderId);
       setOrderForm({
         customerId: order.customerId,
         customerName: order.customerName,
@@ -698,10 +704,10 @@ return (
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{order.broughtBy}</td>
                           <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium flex justify-end items-center">
                             <a className="text-blue-600 hover:text-blue-900 mr-3 cursor-pointer">View</a>
-                            <a className="text-gray-600 hover:text-gray-900 mr-3 cursor-pointer" onClick={(e) => {e.stopPropagation(); handleEdit(order.id)}}>Edit</a>
-                            <ChevronDown 
-                              size={16} 
-                              className={`transform transition-transform ${expandedOrder === order.id ? 'rotate-180' : ''}`} 
+                            <a className="text-gray-600 hover:text-gray-900 mr-3 cursor-pointer" onClick={() => handleEdit(order.id)}>Edit</a>
+                            <ChevronDown
+                              size={16}
+                              className={`transform transition-transform ${expandedOrder === order.id ? 'rotate-180' : ''}`}
                             />
                           </td>
                         </tr>
@@ -795,9 +801,9 @@ return (
                         <span className="text-gray-500">By: {order.broughtBy}</span>
                         <div className="flex space-x-3">
                           <button className="text-blue-600 hover:text-blue-900">View</button>
-                          <button 
-                            className="text-gray-600 hover:text-gray-900" 
-                            onClick={(e) => {e.stopPropagation(); handleEdit(order.id)}}
+                          <button
+                            className="text-gray-600 hover:text-gray-900"
+                            onClick={() => { handleEdit(order.id) }}
                           >
                             Edit
                           </button>
