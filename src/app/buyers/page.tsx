@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import Sidebar from "@/components/sidebar";
 import Select from "react-select";
-import { Plus, Save, Search, Bell, ChevronDown, Trash2, LayoutDashboard, FileText, Package, ShoppingCart, TrendingUp, Users } from "lucide-react";
+import { Plus, Save, Search, Bell, ChevronDown, Trash2, LayoutDashboard, FileText, Package, ShoppingCart, TrendingUp, Users, SquarePlus } from "lucide-react";
 
 import { getAllProducts } from "../../../server_actions/handleGodown";
 import { postPurchaseOrder, getPurchaseOrders, updatePurchaseOrderDeliveryStatus, updatePurchaseOrderPaymentStatus } from "../../../server_actions/handlePurchase";
@@ -162,7 +162,7 @@ export default function BuyersPage() {
     { name: "Orders", href: "/orders", icon: <ShoppingCart size={20} /> },
     { name: "Godown", href: "/godown", icon: <Package size={20} /> },
     { name: "Sales", href: "/sales", icon: <TrendingUp size={20} /> },
-    { name: "Buyers", href: "/buyers", icon: <Users size={20} /> },
+    { name: "Buyers", href: "/buyers", icon: <SquarePlus size={20} /> },
   ];
 
   // Pagination logic for filtered orders (if you don't have backend pagination)

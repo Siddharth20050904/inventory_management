@@ -4,7 +4,7 @@ import React from 'react';
 import { useState, useEffect } from 'react';
 import { 
   LayoutDashboard, Users, FileText, ShoppingCart, 
-  Package, Search, CheckCircle, Calendar, ChevronDown, X, Filter, TrendingUp
+  Package, Search, CheckCircle, Calendar, ChevronDown, X, Filter, TrendingUp, SquarePlus
 } from 'lucide-react';
 import Sidebar from '@/components/sidebar';
 
@@ -53,6 +53,7 @@ export default function PendingPaymentsPage() {
     { name: "Orders", href: "/orders", icon: <ShoppingCart size={20} /> },
     { name: "Godown", href: "/godown", icon: <Package size={20} /> },
     { name: "Sales", href: "/sales", icon: <TrendingUp size={20} /> },
+    { name: "Buyers", href: "/buyers", icon: <SquarePlus size={20} /> },
   ];
 
   const toggleFilterMenu = () => {

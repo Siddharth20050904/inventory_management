@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Users, FileText, ShoppingCart, 
   Package, Bell, Search, 
   ChevronDown,
-  DollarSign, TrendingUp, Wallet, Download
+  DollarSign, TrendingUp, Wallet, Download, SquarePlus
 } from 'lucide-react';
 import { Line } from 'recharts';
 import Sidebar from '@/components/sidebar';
@@ -33,6 +33,7 @@ export default function SalesPage() {
     { name: "Orders", href: "/orders", icon: <ShoppingCart size={20} /> },
     { name: "Godown", href: "/godown", icon: <Package size={20} /> },
     { name: "Sales", href: "/sales", icon: <TrendingUp size={20} /> },
+    { name: "Buyers", href: "/buyers", icon: <SquarePlus size={20} /> },
   ]
   // Sales data for different time periods
   const [salesData, setSalesData] = useState<{

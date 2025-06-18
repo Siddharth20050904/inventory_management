@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { 
   LayoutDashboard, Users, FileText, ShoppingCart, 
-  Package, Bell, DollarSign, Box, TrendingUp,
+  Package, Bell, DollarSign, Box, TrendingUp, SquarePlus
 } from 'lucide-react';
 import Sidebar from '../../components/sidebar';
 import { Order as PrismaOrder } from '@prisma/client';
@@ -64,7 +64,7 @@ export default function DashboardLayout() {
     { name: "Orders", href: "/orders", icon: <ShoppingCart size={20} /> },
     { name: "Godown", href: "/godown", icon: <Package size={20} /> },
     { name: "Sales", href: "/sales", icon: <TrendingUp size={20} /> },
-    { name: "Buyers", href: "/buyers", icon: <Users size={20} /> },
+    { name: "Buyers", href: "/buyers", icon: <SquarePlus size={20} /> },
   ];
 
   const toggleSidebar = () => {

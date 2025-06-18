@@ -5,7 +5,7 @@ import {
   Package, Bell, Search, 
   Plus, Trash2, Save, Edit, RefreshCw,
   ChevronDown, ChevronUp, TrendingUp,
-  ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight
+  ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, SquarePlus
 } from 'lucide-react';
 import Sidebar from '@/components/sidebar';
 import { getProducts, addProduct, updateProduct, deleteProduct, getTotalInventoryValue, getTotalNumberOfProducts } from '../../../server_actions/handleGodown';
@@ -43,12 +43,13 @@ export default function GodownPage() {
   const [totalNumberOfProducts, setTotalNumberOfProducts] = useState(0);
 
   const navigationItems = [
-    { name: "Dashboard", href: "/dashboard", icon: <LayoutDashboard size={20} /> },
-    { name: "Customers", href: "/customers", icon: <Users size={20} /> },
-    { name: "Pending Payments", href: "/payments", icon: <FileText size={20} /> },
-    { name: "Orders", href: "/orders", icon: <ShoppingCart size={20} /> },
-    { name: "Godown", href: "/godown", icon: <Package size={20} /> },
-    { name: "Sales", href: "/sales", icon: <TrendingUp size={20} /> },
+     { name: "Dashboard", href: "/dashboard", icon: <LayoutDashboard size={20} /> },
+     { name: "Customers", href: "/customers", icon: <Users size={20} /> },
+     { name: "Pending Payments", href: "/payments", icon: <FileText size={20} /> },
+     { name: "Orders", href: "/orders", icon: <ShoppingCart size={20} /> },
+     { name: "Godown", href: "/godown", icon: <Package size={20} /> },
+     { name: "Sales", href: "/sales", icon: <TrendingUp size={20} /> },
+     { name: "Buyers", href: "/buyers", icon: <SquarePlus size={20} /> },
   ];
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
