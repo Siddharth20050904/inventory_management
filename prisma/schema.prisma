@@ -63,6 +63,7 @@ model Product {
   description   String?
   lastUpdated   DateTime @default(now())
   orderItems    OrderItem[] @relation("ProductToOrderItems")
+  buyerOrderItems BuyerOrderItem[] @relation("ProductToOrderItems")
 }
 
 model Admin {
@@ -70,4 +71,29 @@ model Admin {
   username       String
   password       String
   email          String? @unique
+}
+
+model BuyerOrder {
+  id            String   @default(cuid()) @id
+  supplierName  String
+  items         BuyerOrderItem[]  // Relation to OrderItem for product list
+  totalCost     Float        @default(0.0)
+  notes         String?
+  status        String       @default("Pending") // e.g., Pending, Delivered, etc.
+  deliveryDate  DateTime?
+  paymentDueDate DateTime?
+  paymentStatus String?      @default("Unpaid")// e.g., Paid, Unpaid
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+}
+
+model BuyerOrderItem {
+  id          String   @default(cuid()) @id
+  productName String   // Name of the product
+  quantity    Int
+  price       Float    // Price per unit
+  orderId     String
+  order       BuyerOrder    @relation(fields: [orderId], references: [id])
+  productId   String
+  product     Product   @relation(fields: [productId], references: [id], name: "ProductToOrderItems")
 }

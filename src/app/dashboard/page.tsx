@@ -64,6 +64,7 @@ export default function DashboardLayout() {
     { name: "Orders", href: "/orders", icon: <ShoppingCart size={20} /> },
     { name: "Godown", href: "/godown", icon: <Package size={20} /> },
     { name: "Sales", href: "/sales", icon: <TrendingUp size={20} /> },
+    { name: "Buyers", href: "/buyers", icon: <Users size={20} /> },
   ];
 
   const toggleSidebar = () => {
