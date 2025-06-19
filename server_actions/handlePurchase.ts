@@ -116,3 +116,102 @@ export async function updatePurchaseOrderPaymentStatus(orderId: string, status: 
     return null;
   }
 }
+
+// Function to update purchase order details
+export async function updatePurchaseOrderDetails(orderId: string, orderData: {
+  supplierName?: string;
+  items?: {
+    productName?: string;
+    quantity?: number;
+    price?: number;
+    productId?: string;
+  }[];
+  totalCost?: number;
+  notes?: string;
+  deliveryDate?: Date;
+  paymentDueDate?: Date;
+  paymentStatus?: string;
+  status?: string;
+}) {
+  try {
+
+    const prevItems = await prisma.buyerOrderItem.findMany({
+      where: { orderId }
+    });
+
+    // Decrement stock for previous items
+    for (const item of prevItems) {
+      if (item.productId && item.quantity) {
+        await prisma.product.update({
+          where: { id: item.productId },
+          data: {
+            quantity: {
+              decrement: item.quantity,
+            },
+          },
+        }).catch(error => {
+          console.error(`Error updating stock for product ${item.productId}:`, error);
+        });
+      }
+    }
+
+    // Delete previous items if they exist
+    if (prevItems.length > 0) {
+      await prisma.buyerOrderItem.deleteMany({
+        where: { orderId }
+      });
+    }
+
+    // Update the purchase order and its items in the database
+    await prisma.buyerOrder.delete({
+      where: { id: orderId },
+    });
+
+    const updatedOrder = await prisma.buyerOrder.create({
+      data: {
+        id: orderId,
+        supplierName: orderData.supplierName || "",
+        totalCost: orderData.totalCost || 0,
+        notes: orderData.notes || "",
+        status: orderData.status || "Pending",
+        deliveryDate: orderData.deliveryDate || new Date(),
+        paymentDueDate: orderData.paymentDueDate || new Date(),
+        paymentStatus: orderData.paymentStatus || "Unpaid",
+        items: {
+          create: orderData.items?.map(item => ({
+            productName: item.productName!,
+            quantity: item.quantity!,
+            price: item.price!,
+            product: {
+              connect: { id: item.productId! }
+            }
+          })) || []
+        }
+      },
+      include: {
+        items: true,
+      },
+    });
+
+    // Increment stock for new items
+    for (const item of orderData.items || []) {
+      if (item.productId && item.quantity) {
+        await prisma.product.update({
+          where: { id: item.productId },
+          data: {
+            quantity: {
+              increment: item.quantity,
+            },
+          },
+        }).catch(error => {
+          console.error(`Error updating stock for product ${item.productId}:`, error);
+        });
+      }
+    }
+
+    return updatedOrder;
+  } catch (error) {
+    console.error("Error updating purchase order details:", error);
+    return null;
+  }
+}

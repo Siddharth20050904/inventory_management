@@ -2,10 +2,10 @@
 import React, { useEffect, useState } from "react";
 import Sidebar from "@/components/sidebar";
 import Select from "react-select";
-import { Plus, Save, Search, Bell, ChevronDown, Trash2, LayoutDashboard, FileText, Package, ShoppingCart, TrendingUp, Users, SquarePlus } from "lucide-react";
+import { Plus, Save, Search, Bell, ChevronDown, Trash2, LayoutDashboard, FileText, Package, ShoppingCart, TrendingUp, Users, SquarePlus, Edit2 } from "lucide-react";
 
 import { getAllProducts } from "../../../server_actions/handleGodown";
-import { postPurchaseOrder, getPurchaseOrders, updatePurchaseOrderDeliveryStatus, updatePurchaseOrderPaymentStatus } from "../../../server_actions/handlePurchase";
+import { postPurchaseOrder, getPurchaseOrders, updatePurchaseOrderDeliveryStatus, updatePurchaseOrderPaymentStatus, updatePurchaseOrderDetails } from "../../../server_actions/handlePurchase";
 import { Product, BuyerOrder } from "@prisma/client";
 
 
@@ -168,6 +168,80 @@ export default function BuyersPage() {
   // Pagination logic for filtered orders (if you don't have backend pagination)
   const paginatedOrders = filteredOrders.slice(0, page * pageSize);
   // If you have backend pagination, use orders directly
+
+  // Handler to open edit modal/form
+  const [editOrderId, setEditOrderId] = useState<string | null>(null);
+  const [editOrderForm, setEditOrderForm] = useState<typeof orderForm | null>(null);
+
+  const handleEditOrder = (order: BuyerOrderWithItems) => {
+    setEditOrderId(order.id);
+    setEditOrderForm({
+      distributorName: order.supplierName,
+      items: order.items.map((item) => ({
+        productName: item.productName,
+        quantity: item.quantity,
+        price: item.price,
+        productId: item.productId,
+      })),
+      paymentStatus: order.paymentStatus || "Unpaid",
+      deliveryStatus: order.status,
+      notes: order.notes || "",
+      deliveryDate: order.deliveryDate
+        ? new Date(order.deliveryDate).toISOString().slice(0, 10)
+        : "",
+      paymentDueDate: order.paymentDueDate
+        ? new Date(order.paymentDueDate).toISOString().slice(0, 10)
+        : "",
+    });
+  };
+
+  // Handler to save edited order
+  const handleSaveEditOrder = async () => {
+    if (!editOrderForm || !editOrderId) return;
+    const items = editOrderForm.items.map((item) => ({
+      productName: item.productName,
+      quantity: item.quantity,
+      price: item.price,
+      productId: item.productId,
+    }));
+    const updatedOrder = {
+      supplierName: editOrderForm.distributorName,
+      items,
+      totalCost: parseFloat(
+        items.reduce((total, item) => total + item.price * item.quantity, 0).toFixed(2)
+      ),
+      paymentStatus: editOrderForm.paymentStatus,
+      status: editOrderForm.deliveryStatus,
+      notes: editOrderForm.notes,
+      deliveryDate: new Date(editOrderForm.deliveryDate),
+      paymentDueDate: new Date(editOrderForm.paymentDueDate),
+    };
+    // You need to implement updatePurchaseOrder in your server_actions/handlePurchase
+    const result = await updatePurchaseOrderDetails(editOrderId, updatedOrder);
+    if (result) {
+      setOrders((prev) =>
+        prev.map((o) =>
+          o.id === editOrderId
+            ? {
+                ...o,
+                ...updatedOrder,
+                items: o.items.map((oldItem, idx) => ({
+                  ...oldItem,
+                  productName: items[idx]?.productName ?? oldItem.productName,
+                  quantity: items[idx]?.quantity ?? oldItem.quantity,
+                  price: items[idx]?.price ?? oldItem.price,
+                  productId: items[idx]?.productId ?? oldItem.productId,
+                })),
+              }
+            : o
+        )
+      );
+      setEditOrderId(null);
+      setEditOrderForm(null);
+    } else {
+      alert("Failed to update order.");
+    }
+  };
 
   return (
     <div className="flex text-black h-screen bg-gray-100">
@@ -380,6 +454,214 @@ export default function BuyersPage() {
             </div>
           )}
 
+          {/* Edit Order Modal/Form */}
+          {editOrderForm && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30">
+              <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-2xl">
+                <h3 className="text-lg font-semibold mb-4">Edit Purchase Order</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Distributor Name</label>
+                    <input
+                      type="text"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      value={editOrderForm.distributorName}
+                      onChange={(e) =>
+                        setEditOrderForm({ ...editOrderForm, distributorName: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Payment Status</label>
+                    <select
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      value={editOrderForm.paymentStatus}
+                      onChange={(e) =>
+                        setEditOrderForm({ ...editOrderForm, paymentStatus: e.target.value })
+                      }
+                    >
+                      <option value="Unpaid">Unpaid</option>
+                      <option value="Paid">Paid</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Delivery Status</label>
+                    <select
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      value={editOrderForm.deliveryStatus}
+                      onChange={(e) =>
+                        setEditOrderForm({ ...editOrderForm, deliveryStatus: e.target.value })
+                      }
+                    >
+                      <option value="Pending">Pending</option>
+                      <option value="Delivered">Delivered</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Delivery Date</label>
+                    <input
+                      type="date"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      value={editOrderForm.deliveryDate}
+                      onChange={(e) =>
+                        setEditOrderForm({ ...editOrderForm, deliveryDate: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Payment Due Date</label>
+                    <input
+                      type="date"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      value={editOrderForm.paymentDueDate}
+                      onChange={(e) =>
+                        setEditOrderForm({ ...editOrderForm, paymentDueDate: e.target.value })
+                      }
+                    />
+                  </div>
+                </div>
+                {/* Items */}
+                <div className="mb-4">
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-2 space-y-2 sm:space-y-0">
+                    <h4 className="font-medium text-gray-700">Items</h4>
+                    <button
+                      className="text-sm text-blue-600 hover:text-blue-800 flex items-center self-start sm:self-auto"
+                      onClick={() =>
+                        setEditOrderForm({
+                          ...editOrderForm,
+                          items: [
+                            ...editOrderForm.items,
+                            { productName: "", quantity: 1, price: 0, productId: "" },
+                          ],
+                        })
+                      }
+                    >
+                      <Plus size={16} className="mr-1" /> Add Item
+                    </button>
+                  </div>
+                  {editOrderForm.items.map((item, index) => (
+                    <div key={index} className="bg-gray-50 p-4 rounded-lg mb-4">
+                      <div className="flex items-end gap-4">
+                        <div className="flex-1 text-black">
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Product</label>
+                          <Select
+                            options={productSelectOptions}
+                            value={productSelectOptions.find((opt) => opt.value === item.productId)}
+                            onChange={(selected) => {
+                              if (selected) {
+                                const updatedItems = [...editOrderForm.items];
+                                updatedItems[index] = {
+                                  ...updatedItems[index],
+                                  productName: selected.productName,
+                                  productId: selected.value,
+                                  price: selected.price,
+                                };
+                                setEditOrderForm({ ...editOrderForm, items: updatedItems });
+                              }
+                            }}
+                            placeholder="Select a product..."
+                            isClearable
+                          />
+                        </div>
+                        <div className="w-20">
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Qty</label>
+                          <input
+                            type="number"
+                            min="1"
+                            step="1"
+                            className="w-full text-black px-2 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            value={item.quantity}
+                            onChange={(e) => {
+                              const updatedItems = [...editOrderForm.items];
+                              updatedItems[index] = {
+                                ...updatedItems[index],
+                                quantity: Number(e.target.value),
+                              };
+                              setEditOrderForm({ ...editOrderForm, items: updatedItems });
+                            }}
+                          />
+                        </div>
+                        <div className="w-24">
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Price</label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="1"
+                            className="w-full text-black px-2 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            value={item.price}
+                            onChange={(e) => {
+                              const updatedItems = [...editOrderForm.items];
+                              updatedItems[index] = {
+                                ...updatedItems[index],
+                                price: Number(e.target.value),
+                              };
+                              setEditOrderForm({ ...editOrderForm, items: updatedItems });
+                            }}
+                          />
+                        </div>
+                        <div className="w-10">
+                          <button
+                            onClick={() => {
+                              const updatedItems = [...editOrderForm.items];
+                              updatedItems.splice(index, 1);
+                              setEditOrderForm({ ...editOrderForm, items: updatedItems });
+                            }}
+                            className="p-2 text-red-500 hover:text-red-700 bg-white rounded-md border border-red-200 hover:border-red-300"
+                            disabled={editOrderForm.items.length === 1}
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  <div className="flex justify-end mt-4">
+                    <div className="text-lg text-black font-semibold bg-blue-50 px-4 py-2 rounded-lg">
+                      Total: ₹
+                      {editOrderForm.items
+                        .reduce((total, item) => total + item.price * item.quantity, 0)
+                        .toFixed(2)}
+                    </div>
+                  </div>
+                </div>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                  <textarea
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    rows={2}
+                    value={editOrderForm.notes}
+                    onChange={(e) =>
+                      setEditOrderForm({ ...editOrderForm, notes: e.target.value })
+                    }
+                  ></textarea>
+                </div>
+                <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-2">
+                  <button
+                    className="w-full sm:w-auto px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+                    onClick={() => {
+                      setEditOrderId(null);
+                      setEditOrderForm(null);
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center justify-center"
+                    onClick={handleSaveEditOrder}
+                    disabled={
+                      !editOrderForm.distributorName ||
+                      editOrderForm.items.some(
+                        (item) => !item.productName || item.quantity <= 0 || item.price <= 0
+                      )
+                    }
+                  >
+                    <Save size={18} className="mr-1" /> Save Changes
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Buyers Orders List */}
           <div className="bg-white rounded-lg shadow overflow-hidden">
             <div className="px-4 sm:px-6 py-4 border-b border-gray-200">
@@ -428,9 +710,19 @@ export default function BuyersPage() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">₹{order.totalCost.toFixed(2)}</td>
                           <td className="px-6 py-4 whitespace-nowrap text-right">
+                            <button
+                              className="p-1 text-blue-500 hover:text-blue-700"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEditOrder(order);
+                              }}
+                              title="Edit"
+                            >
+                              <Edit2 size={16} />
+                            </button>
                             <ChevronDown
                               size={16}
-                              className={`transform transition-transform ml-auto ${expandedOrder === order.id ? "rotate-180" : ""}`}
+                              className={`transform transition-transform ml-2 inline ${expandedOrder === order.id ? "rotate-180" : ""}`}
                             />
                           </td>
                         </tr>
@@ -457,17 +749,14 @@ export default function BuyersPage() {
                                     <button
                                       className="px-3 py-1 rounded text-xs bg-blue-500 text-white hover:bg-blue-600"
                                       onClick={async () => {
-                                        // Optimistically update UI
                                         setOrders((prev) =>
                                           prev.map((o) =>
                                             o.id === order.id ? { ...o, paymentStatus: "Paid" } : o
                                           )
                                         );
-                                        // Await backend update (handle error if needed)
                                         try {
                                           await updatePurchaseOrderPaymentStatus(order.id, "Paid");
                                         } catch {
-                                          // Rollback on error
                                           setOrders((prev) =>
                                             prev.map((o) =>
                                               o.id === order.id ? { ...o, paymentStatus: order.paymentStatus } : o
@@ -485,17 +774,14 @@ export default function BuyersPage() {
                                     <button
                                       className="px-3 py-1 rounded text-xs bg-blue-500 text-white hover:bg-blue-600"
                                       onClick={async () => {
-                                        // Optimistically update UI
                                         setOrders((prev) =>
                                           prev.map((o) =>
                                             o.id === order.id ? { ...o, status: "Delivered" } : o
                                           )
                                         );
-                                        // Await backend update (handle error if needed)
                                         try {
                                           await updatePurchaseOrderDeliveryStatus(order.id, "Delivered");
                                         } catch {
-                                          // Rollback on error
                                           setOrders((prev) =>
                                             prev.map((o) =>
                                               o.id === order.id ? { ...o, status: order.status } : o
@@ -560,3 +846,5 @@ export default function BuyersPage() {
     </div>
   );
 }
+
+// You need to implement updatePurchaseOrder in your
